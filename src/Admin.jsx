@@ -464,7 +464,7 @@ function Manager({ table, toast, openNew, onChanged, live }) {
 
       {/* Form trượt từ phải */}
       <div className={`fixed inset-0 z-50 ${form ? '' : 'pointer-events-none'}`} aria-hidden={!form}>
-        <div onClick={() => setForm(null)} className={`absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity ${form ? 'opacity-100' : 'opacity-0'}`} />
+        <div onClick={() => setForm(null)} className={`absolute inset-0 bg-black/70 transition-opacity ${form ? 'opacity-100' : 'opacity-0'}`} />
         <form onSubmit={save}
           className={`absolute inset-y-0 right-0 flex w-full max-w-[640px] flex-col border-l border-line bg-[#0d0f1a] shadow-2xl transition-transform duration-300 ${form ? 'translate-x-0' : 'translate-x-full'}`}>
           {form && <>
@@ -589,7 +589,7 @@ function SettingsForm({ toast }) {
         )
       })()}
       </>}
-      <div className={`sticky bottom-4 flex items-center justify-between gap-3 rounded-xl border px-4 py-3 shadow-[0_10px_40px_#00000080] backdrop-blur transition ${dirty ? 'border-purple/50 bg-[#141728]/95' : 'border-line bg-card/90'}`}>
+      <div className={`sticky bottom-4 flex items-center justify-between gap-3 rounded-xl border px-4 py-3 shadow-[0_10px_40px_#00000080] transition ${dirty ? 'border-purple/50 bg-[#141728]/95' : 'border-line bg-card'}`}>
         <span className="text-sm text-muted">{dirty ? a('Có thay đổi chưa lưu') : a('Mọi thay đổi đã được lưu')}</span>
         <button disabled={busy || !dirty} className={`${btn} ${grad}`}>{busy ? a('Đang lưu…') : a('Lưu thay đổi')}</button>
       </div>
@@ -649,7 +649,7 @@ function LayoutForm({ toast }) {
           </section>
         )
       })}
-      <div className={`sticky bottom-4 flex items-center justify-between gap-3 rounded-xl border px-4 py-3 shadow-[0_10px_40px_#00000080] backdrop-blur transition ${dirty ? 'border-purple/50 bg-[#141728]/95' : 'border-line bg-card/90'}`}>
+      <div className={`sticky bottom-4 flex items-center justify-between gap-3 rounded-xl border px-4 py-3 shadow-[0_10px_40px_#00000080] transition ${dirty ? 'border-purple/50 bg-[#141728]/95' : 'border-line bg-card'}`}>
         <span className="text-sm text-muted">{dirty ? a('Có thay đổi chưa lưu') : a('Mọi thay đổi đã được lưu')}</span>
         <button onClick={save} disabled={busy || !dirty} className={`${btn} ${grad}`}>{busy ? a('Đang lưu…') : a('Lưu bố cục')}</button>
       </div>
@@ -713,7 +713,7 @@ function CursorPage({ toast }) {
         </div>
         <div data-cursor-label={a('XEM')} className="mt-4 rounded-xl border border-line bg-card p-4 text-sm text-muted">{a('Thẻ dự án mẫu: trỏ vào đây để thử “Con trỏ có chữ”. Bấm chuột ở bất kỳ đâu để thử “Mực loang” và “Tia lửa khi bấm”.')}</div>
       </div>
-      <div className={`sticky bottom-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 shadow-[0_10px_40px_#00000080] backdrop-blur transition ${dirty ? 'border-purple/50 bg-[#141728]/95' : 'border-line bg-card/90'}`}>
+      <div className={`sticky bottom-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 shadow-[0_10px_40px_#00000080] transition ${dirty ? 'border-purple/50 bg-[#141728]/95' : 'border-line bg-card'}`}>
         <span className="text-sm text-muted">{rich(a('Con trỏ: {pointer} · Di chuột: {trail}'), { pointer: <b className="text-white">{a(name(POINTERS, pick.pointer))}</b>, trail: <b className="text-white">{a(name(TRAILS, pick.trail))}</b> })}{dirty ? ' ' + a('(đang xem thử, chưa áp dụng)') : ''}</span>
         <button onClick={save} disabled={busy || !dirty} className={`${btn} ${grad}`}>{busy ? a('Đang lưu…') : a('Áp dụng cho trang chủ')}</button>
       </div>
@@ -875,7 +875,7 @@ export default function Admin() {
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-[env(safe-area-inset-top,0px)] z-40 flex h-16 items-center gap-3 border-b border-line bg-[#07080f]/80 px-4 backdrop-blur-xl sm:px-6">
+        <header className="sticky top-[env(safe-area-inset-top,0px)] z-40 flex h-16 items-center gap-3 border-b border-line bg-[#07080f]/95 px-4 sm:px-6">
           <button onClick={() => setDrawer(true)} className={`${iconBtn} lg:hidden`} aria-label={a('Mở menu')}><Icon name="menu" /></button>
           <button onClick={toggleCollapse} className={`${iconBtn} hidden lg:grid`} aria-label={a('Thu gọn menu')}>
             <Icon name="collapse" className={`size-4 transition ${collapsed ? 'rotate-180' : ''}`} />

@@ -132,7 +132,7 @@ export default function SeasonAdmin({ toast }) {
         <button onClick={() => set({ rules: [...cfg.rules, { effect: 'snow', from: '12-01', to: '12-31' }] })} className={`${ghost} text-xs`}>{a('+ Thêm khoảng ngày')}</button>
       </section>
 
-      <div className={`sticky bottom-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 shadow-[0_10px_40px_#00000080] backdrop-blur transition ${dirty ? 'border-purple/50 bg-[#141728]/95' : 'border-line bg-card/90'}`}>
+      <div className={`sticky bottom-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 shadow-[0_10px_40px_#00000080] transition ${dirty ? 'border-purple/50 bg-[#141728]/95' : 'border-line bg-card'}`}>
         <span className="text-sm text-muted">{a(dirty ? 'Có thay đổi chưa lưu' : 'Mọi thay đổi đã được lưu')}</span>
         <button onClick={save} disabled={busy || !dirty} className={`${btn} ${grad}`}>{a(busy ? 'Đang lưu…' : 'Lưu hiệu ứng theo mùa')}</button>
       </div>

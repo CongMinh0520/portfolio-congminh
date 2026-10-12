@@ -26,7 +26,7 @@ export function activeSeason(cfg, date = new Date()) {
 
 const rand = (a, b) => a + Math.random() * (b - a)
 
-// z-[55]: nằm trên thanh menu (z-50) để lớp backdrop-blur của menu không phải làm mờ lại canvas ở mỗi khung hình
+// z-[55]: nằm trên thanh menu (z-50) để tuyết / hoa rơi phủ cả menu
 export default function SeasonFX({ effect, amount = 'medium' }) {
   const ref = useRef(null)
   useEffect(() => {

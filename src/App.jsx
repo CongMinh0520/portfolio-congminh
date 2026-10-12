@@ -140,7 +140,7 @@ function Navbar({ off, forced, langSwitch, brand }) {
   const [spy, pick] = useActive(shown.map(l => l[0]))
   const active = forced || spy
   return (
-    <nav className="site-nav sticky top-[env(safe-area-inset-top,0px)] z-50 h-[72px] border-b border-line bg-[#0a0c14]/70 backdrop-blur-xl">
+    <nav className="site-nav sticky top-[env(safe-area-inset-top,0px)] z-50 h-[72px] border-b border-line bg-[#0a0c14]/95">
       <i aria-hidden className={`scroll-progress pointer-events-none absolute inset-x-0 -bottom-px h-[2px] ${grad}`} />
       <div className="mx-auto flex h-full w-[min(1180px,100%-32px)] items-center justify-between sm:w-[min(1180px,100%-48px)]">
         <a href="#home" className="text-xl font-extrabold tracking-tight"><BrandLogo brand={brand} /></a>
@@ -151,7 +151,7 @@ function Navbar({ off, forced, langSwitch, brand }) {
           <i className={`block h-0.5 w-[18px] rounded bg-white transition ${open ? 'opacity-0' : ''}`} />
           <i className={`block h-0.5 w-[18px] rounded bg-white transition ${open ? '-translate-y-[7px] -rotate-45' : ''}`} />
         </button>
-        <div className={`absolute inset-x-0 top-[72px] flex flex-col gap-1 border-b border-line bg-[#0a0c14]/95 p-4 backdrop-blur-xl transition md:static md:ml-auto md:flex-row md:items-center md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none
+        <div className={`absolute inset-x-0 top-[72px] flex flex-col gap-1 border-b border-line bg-[#0a0c14] p-4 transition md:static md:ml-auto md:flex-row md:items-center md:border-0 md:bg-transparent md:p-0
           ${open ? 'visible translate-y-0 opacity-100' : 'invisible -translate-y-3 opacity-0 md:visible md:translate-y-0 md:opacity-100'}`}>
           {shown.map(([id]) => (
             <a key={id} href={`#${id}`} onClick={() => { pick(id); setOpen(false) }}
