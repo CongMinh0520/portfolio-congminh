@@ -1,0 +1,33 @@
+{
+  "functions": {
+    "api/page.js": {
+      "includeFiles": "dist/*.html"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/",
+      "destination": "/api/page?type=home"
+    },
+    {
+      "source": "/sitemap.xml",
+      "destination": "/api/sitemap"
+    },
+    {
+      "source": "/robots.txt",
+      "destination": "/api/robots"
+    },
+    {
+      "source": "/blog/:slug",
+      "destination": "/api/page?type=post&slug=:slug"
+    },
+    {
+      "source": "/du-an/:slug",
+      "destination": "/api/page?type=project&slug=:slug"
+    },
+    {
+      "source": "/((?!assets/|api/).*)",
+      "destination": "/app.html"
+    }
+  ]
+}
