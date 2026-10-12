@@ -46,13 +46,15 @@ function CursorLayer({ effect = 'none', hideNative = true }) {
     host.innerHTML = ''
     const el = (css, cls = '') => { const d = document.createElement('div'); d.className = cls; d.style.cssText = `position:fixed;left:0;top:0;pointer-events:none;${css}`; host.appendChild(d); return d }
     const m = { x: innerWidth / 2, y: innerHeight / 2, seen: false, down: false, hover: null }
-    let raf = 0, cleanups = []
+    let raf = 0, tick = null, cleanups = []
     const on = (t, ev, fn, o) => { t.addEventListener(ev, fn, o); cleanups.push(() => t.removeEventListener(ev, fn, o)) }
+    // Hiệu ứng canvas tự dừng vẽ khi đứng yên (không tốn CPU/GPU), có chuyển động thì chạy lại
+    const wake = () => { if (!raf && tick) raf = requestAnimationFrame(tick) }
 
-    on(window, 'pointermove', e => { m.x = e.clientX; m.y = e.clientY; m.seen = true; m.hover = e.target.closest?.(INTERACTIVE) || null; m.target = e.target })
-    on(window, 'pointerdown', () => { m.down = true })
+    on(window, 'pointermove', e => { m.x = e.clientX; m.y = e.clientY; m.seen = true; m.hover = e.target.closest?.(INTERACTIVE) || null; m.target = e.target; wake() })
+    on(window, 'pointerdown', () => { m.down = true; wake() })
     on(window, 'pointerup', () => { m.down = false })
-    on(document.documentElement, 'pointerleave', () => { m.seen = false })
+    on(document.documentElement, 'pointerleave', () => { m.seen = false; wake() })
 
     if (hideNative && ['ring', 'magnetic', 'inspector', 'target', 'label', 'blob'].includes(effect)) {
       const st = document.createElement('style')
@@ -120,7 +122,7 @@ function CursorLayer({ effect = 'none', hideNative = true }) {
       host.appendChild(c)
       const ctx = c.getContext('2d'); let dpr = 1
       const size = () => { dpr = Math.min(2, devicePixelRatio || 1); c.width = innerWidth * dpr; c.height = innerHeight * dpr; c.style.width = innerWidth + 'px'; c.style.height = innerHeight + 'px' }
-      size(); on(window, 'resize', size)
+      size(); on(window, 'resize', () => { size(); wake() })
       const parts = [], pts = []; let last = { x: m.x, y: m.y }, head = { x: m.x, y: m.y }
       const star = (x, y, r, rot) => {
         ctx.beginPath()
@@ -128,10 +130,12 @@ function CursorLayer({ effect = 'none', hideNative = true }) {
         ctx.closePath(); ctx.fill()
       }
       const loop = () => {
+        raf = 0; let busy = false
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, innerWidth, innerHeight)
         ctx.globalCompositeOperation = 'lighter'
         if (effect === 'sparkle') {
           const dist = Math.hypot(m.x - last.x, m.y - last.y)
+          busy = dist > 0 || m.down
           const n = Math.min(6, Math.floor(dist / 7))
           for (let i = 0; i < n; i++) {
             const t = i / Math.max(1, n)
@@ -147,6 +151,7 @@ function CursorLayer({ effect = 'none', hideNative = true }) {
             if (p.shape) star(p.x, p.y, p.r * 1.6 * p.life + 1, p.rot)
             else { ctx.beginPath(); ctx.arc(p.x, p.y, p.r * p.life, 0, Math.PI * 2); ctx.fill() }
           }
+          busy ||= parts.length > 0
         } else {
           head.x = lerp(head.x, m.x, 0.35); head.y = lerp(head.y, m.y, 0.35)
           pts.unshift({ x: head.x, y: head.y }); if (pts.length > 28) pts.pop()
@@ -158,10 +163,12 @@ function CursorLayer({ effect = 'none', hideNative = true }) {
             ctx.beginPath(); ctx.moveTo(pts[i - 1].x, pts[i - 1].y); ctx.lineTo(pts[i].x, pts[i].y); ctx.stroke()
           }
           if (pts[0]) { ctx.fillStyle = 'rgba(255,255,255,.95)'; ctx.beginPath(); ctx.arc(pts[0].x, pts[0].y, 3, 0, Math.PI * 2); ctx.fill() }
+          const tail = pts[pts.length - 1]
+          busy = !!tail && (Math.hypot(head.x - m.x, head.y - m.y) > 0.3 || Math.hypot(pts[0].x - tail.x, pts[0].y - tail.y) > 0.3)
         }
-        raf = requestAnimationFrame(loop)
+        if (busy) raf = requestAnimationFrame(loop)
       }
-      loop()
+      tick = loop; loop()
     }
 
     /* ---------- Lưới chấm phản ứng ---------- */
@@ -179,24 +186,28 @@ function CursorLayer({ effect = 'none', hideNative = true }) {
         grid = []
         for (let x = S / 2; x < innerWidth + S; x += S) for (let y = S / 2; y < innerHeight + S; y += S) grid.push({ x, y, ox: 0, oy: 0, k: 0 })
       }
-      size(); on(window, 'resize', size)
+      size(); on(window, 'resize', () => { size(); wake() })
       const loop = () => {
+        raf = 0; let busy = false
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, innerWidth, innerHeight)
         for (const d of grid) {
           const dx = d.x - m.x, dy = d.y - m.y, dist = Math.hypot(dx, dy) || 1
           const e = m.seen && dist < R ? (1 - dist / R) ** 2 : 0
           // dạt ra nhanh, trôi về chậm
           const t = e > d.k ? 0.35 : 0.06
+          const pk = d.k, px = d.ox, py = d.oy
           d.k = lerp(d.k, e, t)
           d.ox = lerp(d.ox, (dx / dist) * e * PUSH, t); d.oy = lerp(d.oy, (dy / dist) * e * PUSH, t)
+          // chấm còn đang dịch chuyển thì vẽ tiếp khung sau
+          if (Math.abs(d.k - pk) > 0.0005 || Math.abs(d.ox - px) + Math.abs(d.oy - py) > 0.02) busy = true
           if (d.k < 0.01) { ctx.fillStyle = 'rgba(255,255,255,.10)'; ctx.fillRect(d.x - 1.1, d.y - 1.1, 2.2, 2.2); continue }
           const col = mix(Math.min(1, dist / R))
           ctx.fillStyle = `rgba(${col},${0.25 + d.k * 0.75})`
           ctx.beginPath(); ctx.arc(d.x + d.ox, d.y + d.oy, 1.3 + d.k * 2.6, 0, Math.PI * 2); ctx.fill()
         }
-        raf = requestAnimationFrame(loop)
+        if (busy) raf = requestAnimationFrame(loop)
       }
-      loop()
+      tick = loop; loop()
     }
 
     /* ---------- Tâm ngắm khóa mục tiêu ---------- */
@@ -289,7 +300,7 @@ function CursorLayer({ effect = 'none', hideNative = true }) {
       host.appendChild(c)
       const ctx = c.getContext('2d'); let dpr = 1
       const size = () => { dpr = Math.min(2, devicePixelRatio || 1); c.width = innerWidth * dpr; c.height = innerHeight * dpr; c.style.width = innerWidth + 'px'; c.style.height = innerHeight + 'px' }
-      size(); on(window, 'resize', size)
+      size(); on(window, 'resize', () => { size(); wake() })
       const parts = []; let last = { x: m.x, y: m.y }, hue = 0
       const ink = (x, y, vx, vy, r, a) => { if (parts.length < 220) parts.push({ x, y, vx, vy, r, a, life: 1, t: (hue = (hue + 0.013) % 1) }) }
       if (effect === 'splash') on(window, 'pointerdown', e => { for (let i = 0; i < 14; i++) { const t = Math.random() * 6.28, sp = 2 + Math.random() * 5; ink(e.clientX, e.clientY, Math.cos(t) * sp, Math.sin(t) * sp, 18 + Math.random() * 22, 0.5) } })
@@ -298,6 +309,7 @@ function CursorLayer({ effect = 'none', hideNative = true }) {
         for (let i = 0; i < n; i++) { const t = (i / n) * Math.PI * 2 + Math.random() * 0.2; parts.push({ x: e.clientX, y: e.clientY, t, life: 1, col: i % 3 === 2 ? '255,255,255' : mix(i % 2).join(',') }) }
       })
       const loop = () => {
+        raf = 0
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, innerWidth, innerHeight)
         if (effect === 'splash') {
           const vx = m.x - last.x, vy = m.y - last.y, sp = Math.hypot(vx, vy)
@@ -321,9 +333,10 @@ function CursorLayer({ effect = 'none', hideNative = true }) {
             ctx.beginPath(); ctx.moveTo(p.x + Math.cos(p.t) * d1, p.y + Math.sin(p.t) * d1); ctx.lineTo(p.x + Math.cos(p.t) * d2, p.y + Math.sin(p.t) * d2); ctx.stroke()
           }
         }
-        raf = requestAnimationFrame(loop)
+        // hết hạt mực / tia lửa thì nghỉ, chờ lần di / bấm chuột tiếp theo
+        if (parts.length) raf = requestAnimationFrame(loop)
       }
-      loop()
+      tick = loop; loop()
     }
 
     /* ---------- Soi bug (DevTools) ---------- */

@@ -26,6 +26,7 @@ export function activeSeason(cfg, date = new Date()) {
 
 const rand = (a, b) => a + Math.random() * (b - a)
 
+// z-[55]: nằm trên thanh menu (z-50) để lớp backdrop-blur của menu không phải làm mờ lại canvas ở mỗi khung hình
 export default function SeasonFX({ effect, amount = 'medium' }) {
   const ref = useRef(null)
   useEffect(() => {
@@ -33,7 +34,8 @@ export default function SeasonFX({ effect, amount = 'medium' }) {
     const c = ref.current, ctx = c.getContext('2d')
     const mult = (AMOUNTS.find(a => a[0] === amount)?.[2] ?? 1) * (innerWidth < 640 ? 0.55 : 1)
     let W = 0, H = 0, dpr = 1, raf = 0, items = [], sparks = [], rockets = [], nextLaunch = 0
-    const size = () => { dpr = Math.min(2, devicePixelRatio || 1); W = innerWidth; H = innerHeight; c.width = W * dpr; c.height = H * dpr; c.style.width = W + 'px'; c.style.height = H + 'px' }
+    // Hạt nhỏ, mềm: vẽ ở 1x là đủ nét, nhẹ hơn nhiều so với 2x trên màn hình độ phân giải cao
+    const size = () => { dpr = 1; W = innerWidth; H = innerHeight; c.width = W * dpr; c.height = H * dpr; c.style.width = W + 'px'; c.style.height = H + 'px' }
     size(); addEventListener('resize', size)
 
     const fall = effect === 'snow' || effect === 'mai' || effect === 'dao'
@@ -114,5 +116,5 @@ export default function SeasonFX({ effect, amount = 'medium' }) {
     return () => { cancelAnimationFrame(raf); removeEventListener('resize', size); ctx.clearRect(0, 0, c.width, c.height) }
   }, [effect, amount])
   if (!effect) return null
-  return <canvas ref={ref} aria-hidden="true" data-cfx-ignore="" className="pointer-events-none fixed inset-0 z-40" />
+  return <canvas ref={ref} aria-hidden="true" data-cfx-ignore="" className="pointer-events-none fixed inset-0 z-[55]" />
 }
