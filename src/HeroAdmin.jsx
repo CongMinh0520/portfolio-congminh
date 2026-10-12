@@ -336,7 +336,7 @@ export default function HeroAdmin({ toast }) {
 
       <aside className="min-w-0 xl:sticky xl:top-24 xl:self-start xl:max-h-[calc(100vh-12.5rem)] xl:overflow-y-auto xl:rounded-xl xl:[scrollbar-width:thin]"><Preview h={lang === 'en' ? heroFor(h, 'en') : h} /></aside>
 
-      <div className={`sticky bottom-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 shadow-[0_10px_40px_#00000080] transition xl:col-span-2 ${dirty ? 'border-purple/50 bg-[#141728]/95' : 'border-line bg-card'}`}>
+      <div className={`sticky bottom-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 shadow-[0_10px_40px_#00000080] backdrop-blur transition xl:col-span-2 ${dirty ? 'border-purple/50 bg-[#141728]/95' : 'border-line bg-card/90'}`}>
         <span className="text-sm text-muted">{dirty ? a('Có thay đổi chưa lưu') : a('Mọi thay đổi đã được lưu')}</span>
         <button onClick={save} disabled={busy || !dirty} className={`${btn} ${grad}`}>{busy ? a('Đang lưu…') : a('Lưu phần đầu trang')}</button>
       </div>

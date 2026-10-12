@@ -28,7 +28,7 @@ body::before {
 }
 /* ----- Hiệu ứng cuộn ----- */
 .site-nav { transition: background-color .35s ease, box-shadow .35s ease, border-color .35s ease; }
-html[data-scrolled] .site-nav { background-color: #0a0c14; box-shadow: 0 12px 40px #00000070; border-color: #2f3350; }
+html[data-scrolled] .site-nav { background-color: #0a0c14e8; box-shadow: 0 12px 40px #00000070; border-color: #2f3350; }
 .scroll-progress { transform: scaleX(var(--progress, 0)); transform-origin: left; }
 .parallax-slow { transform: translate3d(0, calc(var(--sy, 0) * 0.12px), 0); will-change: transform; }
 .parallax-fast { transform: translate3d(0, calc(var(--sy, 0) * 0.3px), 0) rotate(calc(var(--sy, 0) * 0.008deg)); will-change: transform; }

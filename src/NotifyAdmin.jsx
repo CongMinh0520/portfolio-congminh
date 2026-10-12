@@ -156,7 +156,7 @@ export default function NotifyAdmin({ toast, onSaved }) {
         )
       })}
 
-      <div className={`sticky bottom-4 flex items-center justify-between gap-3 rounded-xl border px-4 py-3 shadow-[0_10px_40px_#00000080] transition ${dirty ? 'border-purple/50 bg-[#141728]/95' : 'border-line bg-card'}`}>
+      <div className={`sticky bottom-4 flex items-center justify-between gap-3 rounded-xl border px-4 py-3 shadow-[0_10px_40px_#00000080] backdrop-blur transition ${dirty ? 'border-purple/50 bg-[#141728]/95' : 'border-line bg-card/90'}`}>
         <span className="text-sm text-muted">{dirty ? a('Có thay đổi chưa lưu') : a('Mọi thay đổi đã được lưu')}</span>
         <button onClick={save} disabled={busy || !dirty} className={`${btn} ${grad}`}>{busy ? a('Đang lưu…') : a('Lưu cài đặt')}</button>
       </div>
