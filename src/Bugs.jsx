@@ -78,7 +78,7 @@ export function BugReport({ b }) {
   )
 }
 
-export function BugDetail({ id, bugs }) {
+export function BugDetail({ id, bugs, selfTest = true }) {
   const { t } = useT()
   const index = bugs.findIndex(b => String(b.id) === String(id)), b = bugs[index]
   if (!b) return null
@@ -98,11 +98,11 @@ export function BugDetail({ id, bugs }) {
             {next ? <a href={href(bugPath(next))} className={`${card} sm:text-right`}><span className="text-xs text-muted">{t('pager.next', { x: t('bugs.unit') })}</span><span className="truncate font-semibold group-hover:text-pink">{next.title}</span></a> : <span className="hidden flex-1 sm:block" />}
           </nav>
         )}
-        <a href={href('/kiem-thu')} className={`${grad} mt-10 block rounded-2xl p-[1px]`}>
+        {selfTest && <a href={href('/kiem-thu')} className={`${grad} mt-10 block rounded-2xl p-[1px]`}>
           <span className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-card px-6 py-5 text-sm">
             <span className="text-[#dfe0ea]">{t('bugs.self')}</span><span className="font-semibold text-white">{t('bugs.selfLink')}</span>
           </span>
-        </a>
+        </a>}
       </div>
     </article>
   )

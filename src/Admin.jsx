@@ -646,8 +646,9 @@ function LayoutForm({ toast }) {
     loadSettings().then(r => { const full = { ...DEMO_SETTINGS, ...(r || {}) }; setRow(full); setHidden(new Set(full.hidden || [])) })
       .catch(e => { toast(e.message, 'error'); setRow({ ...DEMO_SETTINGS }); setHidden(new Set(DEMO_SETTINGS.hidden)) })
   }, [])
-  const flip = k => { const h = new Set(hidden); h.has(k) ? h.delete(k) : h.add(k); setHidden(h); setDirty(true) }
-  const setGroup = (keys, show) => { const h = new Set(hidden); keys.forEach(k => show ? h.delete(k) : h.add(k)); setHidden(h); setDirty(true) }
+  // Cập nhật theo bản mới nhất (bấm nhanh nhiều công tắc liên tiếp không bị mất lần bấm trước)
+  const flip = k => { setHidden(prev => { const h = new Set(prev); h.has(k) ? h.delete(k) : h.add(k); return h }); setDirty(true) }
+  const setGroup = (keys, show) => { setHidden(prev => { const h = new Set(prev); keys.forEach(k => show ? h.delete(k) : h.add(k)); return h }); setDirty(true) }
   const save = async () => {
     setBusy(true)
     const { error } = await supabase.from('settings').upsert({ ...row, id: 1, hidden: [...hidden] })

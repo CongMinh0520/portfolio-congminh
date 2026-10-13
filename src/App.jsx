@@ -210,8 +210,9 @@ function Navbar({ off, forced, langSwitch, brand }) {
   )
 }
 
-function Hero({ off, hero: h, cv }) {
+function Hero({ off, hero: h, cv: cvFile }) {
   const { t } = useT()
+  const cv = off('sec_hero_cv') ? '' : cvFile
   return (
     <header id="home" className="mx-auto flex w-[min(1180px,100%-32px)] flex-col-reverse items-center justify-between gap-14 py-12 text-center sm:w-[min(1180px,100%-48px)] md:min-h-[calc(100svh-72px)] md:flex-row md:gap-16 md:py-[70px] md:text-left">
       <div className="parallax-slow max-w-[620px]">
@@ -231,7 +232,7 @@ function Hero({ off, hero: h, cv }) {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="size-4" aria-hidden="true"><path d="M12 3v12 M7 10l5 5 5-5 M5 21h14" /></svg>{t('hero.cv')}
           </a>}
         </div>}
-        {!off('sec_hero_buttons') && <p style={{ animationDelay: '.46s' }} className="hero-in mt-4 text-sm text-muted">
+        {!off('sec_hero_cv_online') && !off('sec_page_cv') && <p style={{ animationDelay: '.46s' }} className="hero-in mt-4 text-sm text-muted">
           <a href={href('/cv')} className="underline decoration-white/25 underline-offset-4 transition hover:text-white hover:decoration-white">{t('cv.view')} →</a>
         </p>}
         {!off('sec_hero_stats') && h.stats.length > 0 && <div style={{ animationDelay: '.52s' }} className="hero-in mt-11 flex flex-wrap justify-center gap-6 md:justify-start md:gap-9">
@@ -279,8 +280,9 @@ const Section = ({ id, lab, title, intro, children }) => (
 )
 
 // Dòng nhỏ trên trang chủ dẫn tới /kiem-thu
-function SelfTestLine() {
+function SelfTestLine({ off }) {
   const { t } = useT()
+  if (off('sec_selftest_line') || off('sec_page_selftest')) return null
   return (
     <p className="mt-8 text-center text-sm text-muted">
       <span className="mr-1.5" aria-hidden>🧪</span>{t('bugs.self')} <a href={href('/kiem-thu')} className="font-semibold text-white underline decoration-pink/50 underline-offset-4 transition hover:decoration-pink">{t('bugs.selfLink')}</a>
@@ -310,8 +312,8 @@ function Footer({ settings: s, links, socials, off, cv }) {
                 <i className="ping-dot size-[7px] rounded-full bg-[#3ddc97]" />{s.availability}
               </span>
             )}
-            {cv && <a href={cv} target="_blank" rel="noreferrer" download="CongMinh-CV.pdf" className={`${grad} mt-5 block w-fit rounded-xl px-5 py-2.5 text-sm font-semibold`}>{t('foot.cv')}</a>}
-            <a href={href('/cv')} className="mt-3 block w-fit text-sm text-muted transition hover:text-pink">{t('cv.view')} →</a>
+            {cv && !off('sec_footer_cv') && <a href={cv} target="_blank" rel="noreferrer" download="CongMinh-CV.pdf" className={`${grad} mt-5 block w-fit rounded-xl px-5 py-2.5 text-sm font-semibold`}>{t('foot.cv')}</a>}
+            {!off('sec_footer_cv_online') && !off('sec_page_cv') && <a href={href('/cv')} className="mt-3 block w-fit text-sm text-muted transition hover:text-pink">{t('cv.view')} →</a>}
           </div>}
 
           {!off('sec_footer_menu') && links.length > 0 && (
@@ -346,12 +348,12 @@ function Footer({ settings: s, links, socials, off, cv }) {
         {!off('sec_footer_bottom') && <div className="flex flex-col flex-wrap items-center justify-center gap-x-6 gap-y-2 border-t border-line py-6 text-center text-xs text-muted sm:flex-row">
           {s.copyright && <span>{s.copyright}</span>}
           {s.footer_note && <span className="text-center">{s.footer_note}</span>}
-          <span className="flex items-center gap-4">
-            <a href={href('/kiem-thu')} className="transition hover:text-pink">{t('qa.title')}</a>
-            <a href={lang === 'en' ? '/rss-en.xml' : '/rss.xml'} title={t('rss.follow')} className="inline-flex items-center gap-1.5 transition hover:text-pink">
+          {(!off('sec_footer_selftest') && !off('sec_page_selftest') || !off('sec_footer_rss')) && <span className="flex items-center gap-4">
+            {!off('sec_footer_selftest') && !off('sec_page_selftest') && <a href={href('/kiem-thu')} className="transition hover:text-pink">{t('qa.title')}</a>}
+            {!off('sec_footer_rss') && <a href={lang === 'en' ? '/rss-en.xml' : '/rss.xml'} title={t('rss.follow')} className="inline-flex items-center gap-1.5 transition hover:text-pink">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" className="size-3.5" aria-hidden="true"><path d="M4 11a9 9 0 0 1 9 9 M4 4a16 16 0 0 1 16 16" /><circle cx="5" cy="19" r="1.2" fill="currentColor" /></svg>{t('rss.title')}
-            </a>
-          </span>
+            </a>}
+          </span>}
         </div>}
       </div>
     </footer>
@@ -405,8 +407,8 @@ function SiteBody({ path, raw, lang }) {
   else if ((mm = pathname.match(/^\/blog\/(.+)$/))) { page = 'post'; id = idFromSlug(mm[1]) }
   else if ((mm = pathname.match(/^\/du-an\/(.+)$/))) { page = 'project'; id = idFromSlug(mm[1]) }
   else if ((mm = pathname.match(/^\/bug\/(.+)$/))) { page = 'bug'; id = idFromSlug(mm[1]) }
-  else if (/^\/kiem-thu\/?$/.test(pathname)) page = 'selftest'
-  else if (/^\/cv\/?$/.test(pathname)) page = 'cv'
+  else if (/^\/kiem-thu\/?$/.test(pathname)) page = off('sec_page_selftest') ? 'notfound' : 'selftest'
+  else if (/^\/cv\/?$/.test(pathname)) page = off('sec_page_cv') ? 'notfound' : 'cv'
   else if (!['/', '', '/index.html'].includes(pathname)) page = 'notfound'
   const tag = new URLSearchParams(query).get('the') || ''
   const pageNo = Math.max(1, parseInt(new URLSearchParams(query).get('trang'), 10) || 1)
@@ -492,10 +494,10 @@ function SiteBody({ path, raw, lang }) {
       {page !== 'home' ? (
         <main id="noi-dung">
           {missing && <NotFoundPage what={page === 'post' ? t('post.notfound') : page === 'project' ? t('proj.notfound') : page === 'bug' ? t('bugs.notfound') : ''} path={pathname} posts={blogPosts} />}
-          {page === 'blog' && <BlogList posts={blogPosts} tag={tag} pageNo={pageNo} />}
+          {page === 'blog' && <BlogList posts={blogPosts} tag={tag} pageNo={pageNo} rss={!off('sec_blog_rss')} />}
           {page === 'post' && post && <PostDetail id={id} posts={blogPosts} cta={hero.post_cta} />}
           {page === 'project' && proj && <ProjectDetail id={id} projects={off('sec_work') ? [] : projects} />}
-          {page === 'bug' && bug && <BugDetail id={id} bugs={shownBugs} />}
+          {page === 'bug' && bug && <BugDetail id={id} bugs={shownBugs} selfTest={!off('sec_selftest_line') && !off('sec_page_selftest')} />}
           {page === 'selftest' && <Suspense fallback={<div className="min-h-[60vh]" aria-busy="true" />}><SelfTestPage settings={settings} /></Suspense>}
         </main>
       ) : (
@@ -552,14 +554,14 @@ function SiteBody({ path, raw, lang }) {
               </Reveal>
             )})}
           </div>
-          {off('sec_bugs') && <SelfTestLine />}
+          {off('sec_bugs') && <SelfTestLine off={off} />}
         </Section>}
 
         {!off('sec_bugs') && <Section id="bugs" lab={t('bugs.label')} title={t('bugs.title')} intro={t('bugs.intro')}>
           <div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
             {bugs.map((b, i) => <Reveal key={b.id} delay={(i % 3) * 80}><BugCard b={b} /></Reveal>)}
           </div>
-          <SelfTestLine />
+          <SelfTestLine off={off} />
         </Section>}
 
         {!off('sec_blog') && <Section id="blog" lab={t('blog.label')} title={t('blog.title')}>
