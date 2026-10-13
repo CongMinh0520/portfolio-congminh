@@ -3,7 +3,7 @@ import { configured, rpcHome, selectTable, selectSettings } from './api.js'
 import { DEMO_SETTINGS } from './siteBase.js'
 import { sortPosts } from './postStatus.js'
 
-export const LIST_TABLES = ['skills', 'jobs', 'projects', 'posts', 'footer_links', 'socials']
+export const LIST_TABLES = ['skills', 'jobs', 'projects', 'posts', 'bugs', 'footer_links', 'socials']
 
 // Admin (và chế độ demo) dùng client supabase-js; nạp muộn để trang công khai không phải tải thư viện này
 const client = () => import('./supabase.js').then(m => m.supabase)
@@ -40,6 +40,11 @@ const cache = {
   get() { try { return JSON.parse(localStorage.getItem(CACHE)) } catch { return null } },
   set(v) { try { localStorage.setItem(CACHE, JSON.stringify(v)) } catch { /* đầy bộ nhớ / chế độ riêng tư: bỏ qua */ } },
 }
+// Dữ liệu máy chủ nhúng sẵn trong HTML (api/page.js): có thì vẽ trang ngay, không chờ gọi Supabase. Chỉ dùng một lần.
+let inlined = (() => {
+  try { const d = JSON.parse(document.getElementById('cm-data')?.textContent || 'null'); return d && [...LIST_TABLES.map(t => [t, d[t] || []]), ['settings', d.settings]] } catch { return null }
+})()
+const takeInlined = () => { const v = inlined; inlined = null; return v }
 
 // Áp dụng ẩn/hiện: bỏ mục visible=false; trường trong settings.hidden coi như để trống (footer tự ẩn)
 function shape(pairs, demo = {}) {
@@ -62,7 +67,7 @@ function shape(pairs, demo = {}) {
 export function useContent() {
   // ready = đã có dữ liệu thật; trước đó trang chưa vẽ nội dung để khách (và Google) không thấy dữ liệu mẫu chớp qua
   const [content, setContent] = useState(() => {
-    const c = configured && cache.get()
+    const c = configured && (takeInlined() || cache.get())
     return c ? { ...shape(c), ready: true, raw: JSON.stringify(c) } : { ...Object.fromEntries(LIST_TABLES.map(t => [t, []])), settings: DEMO_SETTINGS, ready: false }
   })
   useEffect(() => {

@@ -11,7 +11,7 @@ const APP = 'congminh-portfolio'
 const LAST = 'cm-last-backup'
 // Bảng được sao lưu, theo thứ tự hiện
 const TABLES = [
-  ['posts', 'Blog'], ['projects', 'Dự án'], ['skills', 'Kỹ năng'], ['jobs', 'Kinh nghiệm'],
+  ['posts', 'Blog'], ['projects', 'Dự án'], ['bugs', 'Bug mẫu'], ['skills', 'Kỹ năng'], ['jobs', 'Kinh nghiệm'],
   ['footer_links', 'Menu footer'], ['socials', 'Mạng xã hội'], ['messages', 'Tin nhắn'],
   ['settings', 'Thông tin chung & giao diện'], ['admin_settings', 'Cài đặt thông báo'],
 ]
@@ -58,7 +58,7 @@ export default function BackupAdmin({ toast, onChanged }) {
     setBusy('down')
     try {
       const tables = {}
-      for (const [t] of TABLES) tables[t] = await fetchAll(t).catch(e => { if (t === 'admin_settings') return []; throw e })
+      for (const [t] of TABLES) tables[t] = await fetchAll(t).catch(e => { if (t === 'admin_settings' || t === 'bugs') return []; throw e }) // bảng chưa tạo (chưa chạy migration) thì bỏ qua
       const now = new Date().toISOString()
       const blob = new Blob([JSON.stringify({ app: APP, version: VERSION, created_at: now, tables }, null, 1)], { type: 'application/json' })
       const url = URL.createObjectURL(blob), link = document.createElement('a')

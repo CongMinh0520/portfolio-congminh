@@ -153,7 +153,7 @@ export default function StatsPanel({ go }) {
   const a = useA()
   const [days, setDays] = useState(readDays)
   const [data, setData] = useState(null); const [err, setErr] = useState(null); const [busy, setBusy] = useState(true)
-  const [names, setNames] = useState({ post: {}, project: {} })
+  const [names, setNames] = useState({ post: {}, project: {}, bug: {} })
   const [msgs, setMsgs] = useState(null)
 
   const load = () => {
@@ -163,7 +163,7 @@ export default function StatsPanel({ go }) {
   useEffect(load, [days])
   useEffect(() => {
     const titles = t => supabase.from(t).select('id, title').then(({ data }) => Object.fromEntries((data || []).map(r => [r.id, r.title])), () => ({}))
-    Promise.all([titles('posts'), titles('projects')]).then(([post, project]) => setNames({ post, project }))
+    Promise.all([titles('posts'), titles('projects'), titles('bugs')]).then(([post, project, bug]) => setNames({ post, project, bug }))
     loadMessages().then(({ data }) => setMsgs(data || []), () => setMsgs([]))
   }, [])
   const pick = d => { setDays(d); try { localStorage.setItem(KEY, String(d)) } catch {} }
@@ -180,6 +180,9 @@ export default function StatsPanel({ go }) {
   const pageLabel = r => r.kind === 'home' ? { label: a('Trang chủ') }
     : r.kind === 'blog' ? { label: a('Danh sách Blog') }
     : r.kind === 'post' ? { label: names.post[r.ref_id] || a('Bài #{id} (đã xóa)', { id: r.ref_id }), tag: a('Bài') }
+    : r.kind === 'bug' ? { label: names.bug[r.ref_id] || a('Bug #{id} (đã xóa)', { id: r.ref_id }), tag: 'Bug' }
+    : r.kind === 'cv' ? { label: a('CV online') }
+    : r.kind === 'selftest' ? { label: a('Trang Kiểm thử web') }
     : { label: names.project[r.ref_id] || a('Dự án #{id} (đã xóa)', { id: r.ref_id }), tag: a('Dự án') }
   const srcLabel = s => (s === 'direct' ? a('Vào thẳng (gõ link, bookmark)') : s)
 

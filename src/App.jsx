@@ -6,9 +6,13 @@ const Admin = lazy(() => import('./Admin.jsx'))
 // Hiệu ứng chuột / mùa: mã vẽ chỉ tải SAU khi trang đã hiện (lúc trình duyệt rảnh), và chỉ khi thật sự bật + thiết bị dùng được
 const CursorFX = lazy(() => import('./CursorFX.jsx'))
 const SeasonFX = lazy(() => import('./SeasonFX.jsx'))
+// Trang Kiểm thử và CV online: chỉ tải khi mở đúng trang đó
+const SelfTestPage = lazy(() => import('./SelfTest.jsx'))
+const CvPage = lazy(() => import('./CvPage.jsx'))
 import { PostDetail, ProjectDetail, BlogList, BlogCard, blogPages, NotFoundPage } from './Detail.jsx'
+import { BugCard, BugDetail } from './Bugs.jsx'
 import { trackView } from './stats.js'
-import { HASH, href, navigate, usePath, idFromSlug, postPath, projectPath, blogPath } from './router.js'
+import { HASH, href, navigate, usePath, idFromSlug, postPath, projectPath, blogPath, bugPath } from './router.js'
 import { useSeo } from './seo.js'
 import Contact from './Contact.jsx'
 import { BrandLogo, brandOf, useFavicon } from './Brand.jsx'
@@ -206,8 +210,9 @@ function Navbar({ off, forced, langSwitch, brand }) {
   )
 }
 
-function Hero({ off, hero: h, cv }) {
+function Hero({ off, hero: h, cv: cvFile }) {
   const { t } = useT()
+  const cv = off('sec_hero_cv') ? '' : cvFile
   return (
     <header id="home" className="mx-auto flex w-[min(1180px,100%-32px)] flex-col-reverse items-center justify-between gap-14 py-12 text-center sm:w-[min(1180px,100%-48px)] md:min-h-[calc(100svh-72px)] md:flex-row md:gap-16 md:py-[70px] md:text-left">
       <div className="parallax-slow max-w-[620px]">
@@ -227,6 +232,9 @@ function Hero({ off, hero: h, cv }) {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="size-4" aria-hidden="true"><path d="M12 3v12 M7 10l5 5 5-5 M5 21h14" /></svg>{t('hero.cv')}
           </a>}
         </div>}
+        {!off('sec_hero_cv_online') && !off('sec_page_cv') && <p style={{ animationDelay: '.46s' }} className="hero-in mt-4 text-sm text-muted">
+          <a href={href('/cv')} className="underline decoration-white/25 underline-offset-4 transition hover:text-white hover:decoration-white">{t('cv.view')} →</a>
+        </p>}
         {!off('sec_hero_stats') && h.stats.length > 0 && <div style={{ animationDelay: '.52s' }} className="hero-in mt-11 flex flex-wrap justify-center gap-6 md:justify-start md:gap-9">
           {h.stats.map((st, i) => <div key={i}><b className="block text-[28px] tracking-tight">{st.value}</b><small className="text-xs text-muted">{st.label}</small></div>)}
         </div>}
@@ -260,7 +268,7 @@ export function Marquee({ hero }) {
 }
 
 // Các mục phía dưới: trình duyệt bỏ qua dàn trang/vẽ cho tới khi cuộn gần tới (xem .cv-lazy trong index.css)
-const LAZY = new Set(['experience', 'work', 'blog'])
+const LAZY = new Set(['experience', 'work', 'bugs', 'blog'])
 
 const Section = ({ id, lab, title, intro, children }) => (
   <section id={id} className={`py-[clamp(64px,10vw,110px)] ${LAZY.has(id) ? 'cv-lazy' : ''}`}>
@@ -271,12 +279,23 @@ const Section = ({ id, lab, title, intro, children }) => (
   </section>
 )
 
+// Dòng nhỏ trên trang chủ dẫn tới /kiem-thu
+function SelfTestLine({ off }) {
+  const { t } = useT()
+  if (off('sec_selftest_line') || off('sec_page_selftest')) return null
+  return (
+    <p className="mt-8 text-center text-sm text-muted">
+      <span className="mr-1.5" aria-hidden>🧪</span>{t('bugs.self')} <a href={href('/kiem-thu')} className="font-semibold text-white underline decoration-pink/50 underline-offset-4 transition hover:decoration-pink">{t('bugs.selfLink')}</a>
+    </p>
+  )
+}
+
 const FCol = ({ title, children }) => (
   <div><h4 className="mb-4 text-[11px] font-bold tracking-[2px] text-white">{title}</h4>{children}</div>
 )
 
 function Footer({ settings: s, links, socials, off, cv }) {
-  const { t } = useT()
+  const { t, lang } = useT()
   if (off('sec_footer')) return null
   const hasContact = s.email || s.phone || s.address || s.working_hours
   const tel = (s.phone || '').replace(/[^\d+]/g, '')
@@ -293,7 +312,8 @@ function Footer({ settings: s, links, socials, off, cv }) {
                 <i className="ping-dot size-[7px] rounded-full bg-[#3ddc97]" />{s.availability}
               </span>
             )}
-            {cv && <a href={cv} target="_blank" rel="noreferrer" download="CongMinh-CV.pdf" className={`${grad} mt-5 block w-fit rounded-xl px-5 py-2.5 text-sm font-semibold`}>{t('foot.cv')}</a>}
+            {cv && !off('sec_footer_cv') && <a href={cv} target="_blank" rel="noreferrer" download="CongMinh-CV.pdf" className={`${grad} mt-5 block w-fit rounded-xl px-5 py-2.5 text-sm font-semibold`}>{t('foot.cv')}</a>}
+            {!off('sec_footer_cv_online') && !off('sec_page_cv') && <a href={href('/cv')} className="mt-3 block w-fit text-sm text-muted transition hover:text-pink">{t('cv.view')} →</a>}
           </div>}
 
           {!off('sec_footer_menu') && links.length > 0 && (
@@ -325,9 +345,15 @@ function Footer({ settings: s, links, socials, off, cv }) {
           )}
         </div>
 
-        {!off('sec_footer_bottom') && (s.copyright || s.footer_note) && <div className="flex flex-col items-center justify-center gap-x-6 gap-y-2 border-t border-line py-6 text-center text-xs text-muted sm:flex-row">
-          <span>{s.copyright}</span>
+        {!off('sec_footer_bottom') && <div className="flex flex-col flex-wrap items-center justify-center gap-x-6 gap-y-2 border-t border-line py-6 text-center text-xs text-muted sm:flex-row">
+          {s.copyright && <span>{s.copyright}</span>}
           {s.footer_note && <span className="text-center">{s.footer_note}</span>}
+          {(!off('sec_footer_selftest') && !off('sec_page_selftest') || !off('sec_footer_rss')) && <span className="flex items-center gap-4">
+            {!off('sec_footer_selftest') && !off('sec_page_selftest') && <a href={href('/kiem-thu')} className="transition hover:text-pink">{t('qa.title')}</a>}
+            {!off('sec_footer_rss') && <a href={lang === 'en' ? '/rss-en.xml' : '/rss.xml'} title={t('rss.follow')} className="inline-flex items-center gap-1.5 transition hover:text-pink">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" className="size-3.5" aria-hidden="true"><path d="M4 11a9 9 0 0 1 9 9 M4 4a16 16 0 0 1 16 16" /><circle cx="5" cy="19" r="1.2" fill="currentColor" /></svg>{t('rss.title')}
+            </a>}
+          </span>}
         </div>}
       </div>
     </footer>
@@ -363,9 +389,11 @@ function SiteBody({ path, raw, lang }) {
   const posts = localizeList(raw.posts, 'posts', lang)
   const skills = localizeList(raw.skills, 'skills', lang), jobs = localizeList(raw.jobs, 'jobs', lang)
   const projects = localizeList(raw.projects, 'projects', lang), footer_links = localizeList(raw.footer_links, 'footer_links', lang)
+  const bugs = localizeList(raw.bugs || [], 'bugs', lang)
   const settings = localizeSettings(raw.settings, lang)
   const hidden = new Set(settings.hidden || [])
-  const off = k => !!k && hidden.has(k)
+  // Mục Bug mẫu tự ẩn (cả link trên menu) khi chưa có bug nào đang hiển thị
+  const off = k => !!k && (hidden.has(k) || (k === 'sec_bugs' && !bugs.length))
   // link footer trỏ tới mục đang ẩn (VD #skills) cũng ẩn theo
   const fLinks = footer_links.filter(l => !off(SECTION_OF[(l.href || '').replace(/^\/?#/, '')]))
   const hero = heroFor(settings.hero, lang)
@@ -378,6 +406,9 @@ function SiteBody({ path, raw, lang }) {
   if (/^\/blog\/?$/.test(pathname)) page = 'blog'
   else if ((mm = pathname.match(/^\/blog\/(.+)$/))) { page = 'post'; id = idFromSlug(mm[1]) }
   else if ((mm = pathname.match(/^\/du-an\/(.+)$/))) { page = 'project'; id = idFromSlug(mm[1]) }
+  else if ((mm = pathname.match(/^\/bug\/(.+)$/))) { page = 'bug'; id = idFromSlug(mm[1]) }
+  else if (/^\/kiem-thu\/?$/.test(pathname)) page = off('sec_page_selftest') ? 'notfound' : 'selftest'
+  else if (/^\/cv\/?$/.test(pathname)) page = off('sec_page_cv') ? 'notfound' : 'cv'
   else if (!['/', '', '/index.html'].includes(pathname)) page = 'notfound'
   const tag = new URLSearchParams(query).get('the') || ''
   const pageNo = Math.max(1, parseInt(new URLSearchParams(query).get('trang'), 10) || 1)
@@ -391,21 +422,26 @@ function SiteBody({ path, raw, lang }) {
     prev: pageNo > 1 && pageNo <= blogTotal ? blogPath(tag, pageNo - 1) : '', next: pageNo < blogTotal ? blogPath(tag, pageNo + 1) : '', noindex: pageNo > blogTotal,
   }
   const proj = page === 'project' ? (off('sec_work') ? [] : projects).find(p => p.id === id) : null
+  const shownBugs = off('sec_bugs') ? [] : bugs
+  const bug = page === 'bug' ? shownBugs.find(b => b.id === id) : null
   // Link sai / bài, dự án đã ẩn hoặc xóa → trang 404 (không cho Google lập chỉ mục)
-  const missing = page === 'notfound' || (page === 'post' && !post) || (page === 'project' && !proj)
+  const missing = page === 'notfound' || (page === 'post' && !post) || (page === 'project' && !proj) || (page === 'bug' && !bug)
   const viewKind = missing ? 'notfound' : page
   // Đếm lượt xem (Admin → Tổng quan). Đổi ngôn ngữ không tính thêm lượt.
-  useEffect(() => { trackView({ kind: viewKind, ref_id: viewKind === 'post' || viewKind === 'project' ? id : null, path: pathname, lang }) }, [viewKind, id, pathname])
+  useEffect(() => { trackView({ kind: viewKind, ref_id: ['post', 'project', 'bug'].includes(viewKind) ? id : null, path: pathname, lang }) }, [viewKind, id, pathname])
 
   // Link đẹp: đổi đường dẫn về đúng tên bài (VD bài đổi tiêu đề) mà không tải lại
   useEffect(() => {
-    const want = post ? postPath(post) : proj ? projectPath(proj) : null
+    const want = post ? postPath(post) : proj ? projectPath(proj) : bug ? bugPath(bug) : null
     if (want && pathname !== want) navigate(want, { replace: true })
-  }, [post?.id, post?.slug, post?.title, proj?.id, proj?.title])
+  }, [post?.id, post?.slug, post?.title, proj?.id, proj?.title, bug?.id, bug?.title])
 
   useSeo(missing ? { title: t('nf.title'), description: t('nf.lead'), path: pathname, noindex: true }
     : page === 'post' && post ? { title: post.title, description: post.excerpt, image: post.image, type: 'article', published: post.published_at, path: postPath(post), canonical: post.canonical_source && /^https?:\/\//i.test(post.url || '') ? post.url : '' }
     : page === 'project' && proj ? { title: proj.title, description: proj.description, image: proj.image, path: projectPath(proj) }
+    : page === 'bug' && bug ? { title: bug.title, description: [bug.product, bug.actual].filter(Boolean).join(' — ').replace(/[*#>`]/g, ''), path: bugPath(bug) }
+    : page === 'selftest' ? { title: t('qa.title'), description: t('qa.seo.desc'), path: '/kiem-thu' }
+    : page === 'cv' ? { title: 'CV', description: t('cv.seo'), image: hero.avatar.image, path: '/cv' }
     : page === 'blog' ? blogSeo
 
     : { description: hero.lead, image: hero.avatar.image, path: '/' })
@@ -446,16 +482,23 @@ function SiteBody({ path, raw, lang }) {
   }, [page])
   useScrollVars([path, lang])
 
+  if (page === 'cv') return (
+    <Suspense fallback={<div className="min-h-screen" aria-busy="true" />}>
+      <CvPage hero={hero} settings={settings} socials={socials} skills={skills} jobs={jobs} projects={off('sec_work') ? [] : projects} bugs={shownBugs} cv={cvUrl} />
+    </Suspense>
+  )
   return (
     <>
       <a href="#noi-dung" className="sr-only z-[60] rounded-lg bg-white px-4 py-2 font-semibold text-[#161525] focus:not-sr-only focus:fixed focus:left-4 focus:top-4">{t('skip')}</a>
-      <Navbar key={page} brand={brandOf(settings)} langSwitch={settings.lang_switch !== false} off={off} forced={missing ? 'none' : page === 'post' || page === 'blog' ? 'blog' : page === 'project' ? 'work' : null} />
+      <Navbar key={page} brand={brandOf(settings)} langSwitch={settings.lang_switch !== false} off={off} forced={missing || page === 'selftest' ? 'none' : page === 'post' || page === 'blog' ? 'blog' : page === 'project' ? 'work' : page === 'bug' ? 'bugs' : null} />
       {page !== 'home' ? (
         <main id="noi-dung">
-          {missing && <NotFoundPage what={page === 'post' ? t('post.notfound') : page === 'project' ? t('proj.notfound') : ''} path={pathname} posts={blogPosts} />}
-          {page === 'blog' && <BlogList posts={blogPosts} tag={tag} pageNo={pageNo} />}
+          {missing && <NotFoundPage what={page === 'post' ? t('post.notfound') : page === 'project' ? t('proj.notfound') : page === 'bug' ? t('bugs.notfound') : ''} path={pathname} posts={blogPosts} />}
+          {page === 'blog' && <BlogList posts={blogPosts} tag={tag} pageNo={pageNo} rss={!off('sec_blog_rss')} />}
           {page === 'post' && post && <PostDetail id={id} posts={blogPosts} cta={hero.post_cta} />}
           {page === 'project' && proj && <ProjectDetail id={id} projects={off('sec_work') ? [] : projects} />}
+          {page === 'bug' && bug && <BugDetail id={id} bugs={shownBugs} selfTest={!off('sec_selftest_line') && !off('sec_page_selftest')} />}
+          {page === 'selftest' && <Suspense fallback={<div className="min-h-[60vh]" aria-busy="true" />}><SelfTestPage settings={settings} /></Suspense>}
         </main>
       ) : (
       <main id="noi-dung" className="overflow-x-clip">
@@ -511,6 +554,14 @@ function SiteBody({ path, raw, lang }) {
               </Reveal>
             )})}
           </div>
+          {off('sec_bugs') && <SelfTestLine off={off} />}
+        </Section>}
+
+        {!off('sec_bugs') && <Section id="bugs" lab={t('bugs.label')} title={t('bugs.title')} intro={t('bugs.intro')}>
+          <div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+            {bugs.map((b, i) => <Reveal key={b.id} delay={(i % 3) * 80}><BugCard b={b} /></Reveal>)}
+          </div>
+          <SelfTestLine off={off} />
         </Section>}
 
         {!off('sec_blog') && <Section id="blog" lab={t('blog.label')} title={t('blog.title')}>

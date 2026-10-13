@@ -9,4 +9,5 @@ import version from './version.js'
 import backup from './backup.js'
 import cv from './cv.js'
 import push from './push.js'
-export default { ...push, ...cv, ...backup, ...version, ...stats, ...misc, ...settings, ...look, ...content, ...core }
+import qa from './qa.js'
+export default { ...qa, ...push, ...cv, ...backup, ...version, ...stats, ...misc, ...settings, ...look, ...content, ...core }

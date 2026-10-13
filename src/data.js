@@ -1,4 +1,5 @@
 import { POSTS_EN } from './postsEn.js'
+import { DEMO_BUGS } from './demoBugs.js'
 // Nav + dữ liệu mẫu (dùng khi chưa cấu hình Supabase). Cùng cấu trúc với các bảng trong supabase/schema.sql
 import { links, SECTIONS, SECTION_OF, marquee, meta, GRADS, DEMO_SETTINGS } from './siteBase.js'
 export { links, SECTIONS, SECTION_OF, marquee, meta, GRADS, DEMO_SETTINGS }
@@ -514,3 +515,4 @@ Found payroll calculation errors in special cases and a permission bug that show
 Object.entries(EN).forEach(([t, m]) => demo[t].forEach(r => { if (m[r.id]) r.en = m[r.id] }))
 // Bản English của bài blog mẫu
 demo.posts.forEach(p => { if (POSTS_EN[p.id]) p.en = POSTS_EN[p.id] })
+demo.bugs = DEMO_BUGS

@@ -25,7 +25,9 @@ import { markOwner } from './stats.js'
 import { BrandIcon, BrandLogo, brandOf, useFavicon } from './Brand.jsx'
 import { TR_FIELDS, SETTINGS_TR, CTA_TR } from './i18n.js'
 import { Markdown } from './Detail.jsx'
-import { href, postPath, projectPath, navigate, usePath } from './router.js'
+import { href, postPath, projectPath, bugPath, bugCode, navigate, usePath } from './router.js'
+import { BugReport, BugBadges, SEVERITIES, PRIORITIES, STATUSES } from './Bugs.jsx'
+import SelfTestAdmin from './SelfTestAdmin.jsx'
 import { mergeHero, DEFAULT_HERO } from './HeroVisual.jsx'
 import { autoCover, coverOf, newSeed } from './autoArt.js'
 
@@ -46,6 +48,16 @@ const SCHEMA = {
     ['tags', 'Thẻ (cách nhau bằng dấu phẩy, VD: Automation, Playwright)', 'tags'],
     ['content', 'Nội dung bài viết', 'markdown'], ['url', 'Link bản gốc (nếu đăng ở nơi khác, để trống = ẩn nút)', 'text'],
     ['canonical_source', 'Bản chính cho Google', 'check'] ] },
+  bugs: { label: 'Bug mẫu', icon: 'bug', title: 'title', sub: 'product', fields: [
+    ['title', 'Tiêu đề bug (ngắn, nói rõ lỗi gì)', 'text'],
+    ['severity', 'Mức độ nghiêm trọng (Severity)', 'pick', SEVERITIES.map(k => [k, k[0].toUpperCase() + k.slice(1)])],
+    ['priority', 'Độ ưu tiên (Priority)', 'pick', PRIORITIES.map(k => [k, k[0].toUpperCase() + k.slice(1)])],
+    ['status', 'Trạng thái', 'pick', [['reported', 'Đã báo cáo'], ['fixed', 'Đã sửa'], ['wontfix', 'Không sửa']]],
+    ['found_at', 'Ngày phát hiện', 'date'], ['product', 'Sản phẩm / trang bị lỗi', 'text'],
+    ['product_url', 'Link tới nơi bị lỗi (để trống = ẩn nút)', 'text'], ['environment', 'Môi trường (VD: Windows 10 · Chrome 152 · 1280×720)', 'text'],
+    ['steps', 'Các bước tái hiện (mỗi bước một dòng: 1. … 2. …)', 'textarea'], ['expected', 'Kết quả mong đợi', 'textarea'], ['actual', 'Kết quả thực tế', 'textarea'],
+    ['image', 'Ảnh bằng chứng (tùy chọn)', 'shot'], ['content', 'Ghi chú thêm (ảnh hưởng, cách tạm né, nguyên nhân…)', 'markdown'],
+    ['tags', 'Thẻ (cách nhau bằng dấu phẩy, VD: UI, Giỏ hàng)', 'tags'] ] },
   footer_links: { label: 'Menu footer', icon: 'list', title: 'label', sub: 'href', fields: [
     ['label', 'Tên hiển thị', 'text'], ['href', 'Đường dẫn (VD: #work hoặc https://...)', 'text'] ] },
   socials: { label: 'Mạng xã hội', icon: 'link', title: 'label', sub: 'url', fields: [
@@ -65,7 +77,7 @@ const SETTINGS_GROUPS = [
 
 const NAV = [
   ['', [['dashboard', 'Tổng quan', 'grid'], ['messages', 'Tin nhắn', 'mail']]],
-  ['NỘI DUNG', ['posts', 'projects', 'skills', 'jobs'].map(k => [k, SCHEMA[k].label, SCHEMA[k].icon])],
+  ['NỘI DUNG', [...['posts', 'projects', 'bugs', 'skills', 'jobs'].map(k => [k, SCHEMA[k].label, SCHEMA[k].icon]), ['selftest', 'Trang Kiểm thử web', 'flask']]],
   ['GIAO DIỆN', [['brand', 'Thương hiệu', 'badge'], ['hero', 'Đầu trang', 'image'], ['layout', 'Bố cục trang chủ', 'eye'], ['cursor', 'Hiệu ứng chuột', 'cursor'], ['season', 'Hiệu ứng theo mùa', 'snow']]],
   ['THÔNG TIN & LIÊN HỆ', [['settings', 'Thông tin chung', 'sliders'], ...['footer_links', 'socials'].map(k => [k, SCHEMA[k].label, SCHEMA[k].icon])]],
   ['CÀI ĐẶT', [['notify', 'Thông báo', 'bell'], ['lang', 'Ngôn ngữ', 'globe'], ['autopost', 'Đăng bài tự động', 'link'], ['backup', 'Sao lưu', 'download'], ['version', 'Phiên bản', 'info']]],
@@ -74,7 +86,7 @@ const TITLES = { ...Object.fromEntries(NAV.flatMap(([, items]) => items.map(([k,
 // Mỗi mục Admin có đường dẫn riêng (VD /admin/blog) để tải lại trang hay bấm Back vẫn đúng mục
 const ADMIN_SLUGS = {
   dashboard: '', account: 'tai-khoan', brand: 'thuong-hieu', notify: 'thong-bao', messages: 'tin-nhan', lang: 'ngon-ngu', hero: 'dau-trang', layout: 'bo-cuc', cursor: 'hieu-ung-chuot', season: 'hieu-ung-mua',
-  projects: 'du-an', skills: 'ky-nang', jobs: 'kinh-nghiem', posts: 'blog',
+  projects: 'du-an', skills: 'ky-nang', jobs: 'kinh-nghiem', posts: 'blog', bugs: 'bug-mau', selftest: 'kiem-thu',
   footer_links: 'menu-footer', socials: 'mang-xa-hoi', settings: 'thong-tin-chung', autopost: 'dang-bai-tu-dong', version: 'phien-ban', backup: 'sao-luu',
 }
 const adminPath = k => (ADMIN_SLUGS[k] ? `/admin/${ADMIN_SLUGS[k]}` : '/admin')
@@ -126,6 +138,8 @@ const ICONS = {
   mail: 'M3 6h18v12H3z M3 7l9 6 9-6',
   bell: 'M6 16V11a6 6 0 1 1 12 0v5l2 2H4z M10 20a2 2 0 0 0 4 0',
   badge: 'M12 3l2.6 2.2 3.4-.3.8 3.3 2.9 1.8-1.3 3.1 1.3 3.1-2.9 1.8-.8 3.3-3.4-.3L12 21l-2.6-2.2-3.4.3-.8-3.3-2.9-1.8 1.3-3.1-1.3-3.1 2.9-1.8.8-3.3 3.4.3z M9 12l2 2 4-4',
+  bug: 'M8 9a4 4 0 0 1 8 0v5a4 4 0 0 1-8 0z M12 9v9 M8 12H4 M20 12h-4 M8 16l-3 2 M16 16l3 2 M8 8 5 6 M16 8l3-2 M10 5 9 3 M14 5l1-2',
+  flask: 'M9 3h6 M10 3v6L4.5 18.5A1.7 1.7 0 0 0 6 21h12a1.7 1.7 0 0 0 1.5-2.5L14 9V3 M7 15h10',
   globe: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z M3 12h18 M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9 M12 3C9.5 5.6 8.2 8.6 8.2 12s1.3 6.4 3.8 9',
 }
 const Icon = ({ name, className = 'size-[18px]' }) => (
@@ -168,8 +182,16 @@ function StatusPill({ visible, onClick }) {
   )
 }
 
-function Field({ id, type, value, onChange, form, table, toast }) {
+function Field({ id, type, value, onChange, form, table, toast, opts }) {
   const a = useA()
+  if (type === 'pick') return (
+    <div id={id} role="radiogroup" className="flex flex-wrap gap-1.5">
+      {opts.map(([k, l]) => (
+        <button key={k} type="button" role="radio" aria-checked={(value || opts[0][0]) === k} onClick={() => onChange(k)}
+          className={`rounded-full border px-3 py-1.5 text-xs transition ${(value || opts[0][0]) === k ? 'border-purple bg-purple/15 font-semibold text-white' : 'border-line text-muted hover:text-white'}`}>{a(l)}</button>
+      ))}
+    </div>)
+  if (type === 'shot') return <ImageField id={id} wide value={value} onChange={onChange} toast={toast} />
   if (type === 'cover') {
     const kind = table === 'projects' ? 'project' : 'post'
     const fallback = coverOf({ ...form, image: '' }, kind)
@@ -311,7 +333,8 @@ function Manager({ table, toast, openNew, onChanged, live }) {
   const trFields = TR_FIELDS[table]; const [formLang, setFormLang] = useState('vi')
   useEffect(() => setFormLang('vi'), [form?.id, form === null])
 
-  const reload = () => loadTable(table).then(r => { setRows(r); onChanged() }).catch(e => setErr(e.message))
+  const reload = () => loadTable(table).then(r => { setRows(r); onChanged() })
+    .catch(e => setErr(table === 'bugs' && /bugs|schema cache|42P01|PGRST/i.test(e.message) ? a('Chưa có bảng Bug mẫu: chạy file supabase/migration-qa.sql trong Supabase → SQL Editor.') : e.message))
   useEffect(() => { setRows(null); setForm(null); setQ(''); setErr(''); reload() }, [table])
   // Realtime: bảng Blog tự cập nhật khi có thay đổi (không đếm lại các bảng khác)
   useEffect(() => { if (live && table === 'posts') loadTable(table).then(setRows).catch(() => {}) }, [live])
@@ -320,7 +343,8 @@ function Manager({ table, toast, openNew, onChanged, live }) {
   // Bài blog mới mặc định là bản nháp và lên đầu danh sách
   const newItem = () => setForm(isPosts
     ? { visible: false, sort: (rows?.length ? Math.min(...rows.map(r => r.sort || 0)) : 0) - 1, published_at: new Date().toISOString().slice(0, 10) }
-    : { visible: true, grad: 'neon', sort: (rows?.length ? Math.max(...rows.map(r => r.sort || 0)) : 0) + 1 })
+    : { visible: true, grad: 'neon', sort: (rows?.length ? Math.max(...rows.map(r => r.sort || 0)) : 0) + 1,
+      ...(table === 'bugs' ? { severity: 'major', priority: 'medium', status: 'reported', found_at: new Date().toISOString().slice(0, 10) } : {}) })
   const filtered = useMemo(() => (isPosts ? sortPosts(rows || []) : rows || []).filter(r =>
     (!isPosts || tab === 'all' || postStatus(r) === tab) &&
     (!q || [r[cfg.title], r[cfg.sub], r.description].join(' ').toLowerCase().includes(q.toLowerCase()))), [rows, q, tab])
@@ -335,8 +359,9 @@ function Manager({ table, toast, openNew, onChanged, live }) {
     e?.preventDefault?.(); setBusy(true)
     const visible = isPosts && publish !== undefined ? publish : form.visible !== false
     const payload = { sort: Number(form.sort) || 0, visible, ...(isPosts ? { review: false } : {}) }
-    cfg.fields.forEach(([k, , type]) => {
+    cfg.fields.forEach(([k, , type, opts]) => {
       let v = form[k]
+      if (type === 'pick') v = opts.some(o => o[0] === v) ? v : opts[0][0]
       if (type === 'tags') v = (Array.isArray(v) ? v : String(v ?? '').split(',')).map(s => s.trim()).filter(Boolean)
       if (type === 'date') v = v || null
       if (type === 'check') v = !!v && !!String(form.url || '').trim()
@@ -413,6 +438,7 @@ function Manager({ table, toast, openNew, onChanged, live }) {
                 <span className="flex items-center gap-2.5">
                   {(table === 'projects' || table === 'posts') && <img src={coverOf(r, table === 'projects' ? 'project' : 'post')} alt="" className="h-8 w-[61px] flex-none rounded-md object-cover" />}
                   {table === 'skills' && r.icon && <i className="grid size-8 flex-none place-items-center rounded-md bg-white/5 not-italic">{r.icon}</i>}
+                  {table === 'bugs' && <i className="flex-none rounded-md bg-pink/15 px-1.5 py-1 font-mono text-[11px] font-semibold not-italic text-pink">{bugCode(r)}</i>}
                   <span className="min-w-0">
                     <span className="flex min-w-0 items-center gap-2"><span className="truncate font-medium hover:text-pink">{r[cfg.title]}</span>{r.source === 'easyai' && <span className="flex-none rounded bg-purple/20 px-1.5 py-0.5 text-[10px] font-semibold text-[#b5aaff]">{a('TỰ ĐỘNG')}</span>}
                       {trFields && missingOf(trFields, r, r.en || {}) > 0 && <span title={a('Chưa có đủ bản English')} className="flex-none rounded border border-[#f8d27c]/40 px-1.5 py-0.5 text-[10px] font-semibold text-[#f8d27c]">{a('EN chưa dịch')}</span>}</span>
@@ -431,9 +457,9 @@ function Manager({ table, toast, openNew, onChanged, live }) {
                   </>
                 ) : (
                   <>
-                    {isPosts && r.visible === false
+                    {(isPosts || table === 'bugs') && r.visible === false
                       ? <button onClick={() => setView(r)} className={iconBtn} aria-label={a('Xem trước')} title={a('Xem trước')}><Icon name="eye" className="size-4" /></button>
-                      : (table === 'posts' || table === 'projects') && <a href={href(table === 'posts' ? postPath(r) : projectPath(r))} className={iconBtn} aria-label={a('Xem trang chi tiết')} title={a('Xem trang chi tiết')}><Icon name="external" className="size-4" /></a>}
+                      : (table === 'posts' || table === 'projects' || table === 'bugs') && <a href={href(table === 'posts' ? postPath(r) : table === 'bugs' ? bugPath(r) : projectPath(r))} className={iconBtn} aria-label={a('Xem trang chi tiết')} title={a('Xem trang chi tiết')}><Icon name="external" className="size-4" /></a>}
                     <button onClick={() => setForm(r)} className={iconBtn} aria-label={a('Sửa')}><Icon name="edit" className="size-4" /></button>
                     <button onClick={() => del(r)} className={`${iconBtn} hover:!bg-red-500/15 hover:!text-red-300`} aria-label={a('Xóa')}><Icon name="trash" className="size-4" /></button>
                   </>
@@ -446,7 +472,21 @@ function Manager({ table, toast, openNew, onChanged, live }) {
       {rows && (isPosts
         ? <p className="mt-3 text-xs text-muted">{a('{published} đã đăng · {draft} bản nháp · {review} chờ duyệt. Bản nháp và bài chờ duyệt chỉ bạn thấy trong Admin.', { published: statusCount('published'), draft: statusCount('draft'), review: statusCount('review') })}</p>
         : <p className="mt-3 text-xs text-muted">{a('{n} mục · {hidden} đang ẩn. Bấm vào trạng thái để ẩn/hiện nhanh.', { n: rows.length, hidden: rows.filter(r => r.visible === false).length })}</p>)}
-      {view && (
+      {view && table === 'bugs' && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4" onClick={() => setView(null)}>
+          <div className="max-h-[90vh] w-full max-w-[860px] overflow-y-auto rounded-2xl border border-line bg-[#07080f] p-6 sm:p-8" onClick={e => e.stopPropagation()}>
+            <div className="mb-4 flex items-center justify-between gap-3"><span className="text-xs text-muted">{a('Xem trước · đang ẩn')}</span><button onClick={() => setView(null)} className={`${ghost} px-3 py-1.5 text-xs`}>{a('Đóng')}</button></div>
+            <h1 className="mb-4 text-[clamp(22px,3.6vw,32px)] font-bold leading-tight">{view.title}</h1>
+            <BugBadges b={view} />
+            <div className="mt-6"><BugReport b={view} /></div>
+            <div className="mt-8 flex justify-end gap-2">
+              <button onClick={() => { setForm(view); setView(null) }} className={ghost}>{a('Sửa')}</button>
+              <button onClick={() => { toggleVisible(view); setView(null) }} className={`${btn} ${grad}`}>{a('Hiện trên trang')}</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {view && table !== 'bugs' && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4" onClick={() => setView(null)}>
           <div className="max-h-[90vh] w-full max-w-[760px] overflow-y-auto rounded-2xl border border-line bg-[#07080f] p-6 sm:p-8" onClick={e => e.stopPropagation()}>
             <div className="mb-4 flex items-center justify-between gap-3"><StatusTag st={postStatus(view)} /><button onClick={() => setView(null)} className={`${ghost} px-3 py-1.5 text-xs`}>{a('Đóng')}</button></div>
@@ -475,10 +515,10 @@ function Manager({ table, toast, openNew, onChanged, live }) {
             <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
               {trFields && <LangTabs value={formLang} onChange={setFormLang} missing={missingOf(trFields, form, form.en || {})} />}
               {formLang === 'en' && trFields ? <EnEditor key={form.id ?? 'new'} idPrefix={`en-${table}`} fields={trFields} base={form} en={form.en || {}} toast={toast} onChange={en => setForm(f => ({ ...f, en }))} /> : <>
-              {cfg.fields.map(([k, lab, type]) => (
+              {cfg.fields.map(([k, lab, type, opts]) => (
                 <div key={`${form.id ?? 'new'}-${k}`}>
                   <label htmlFor={`f-${table}-${k}`} className="mb-1.5 block text-xs font-medium text-muted">{a(lab)}</label>
-                  <Field id={`f-${table}-${k}`} type={type} value={form[k]} form={form} table={table} toast={toast} onChange={v => setForm(f => ({ ...f, [k]: v }))} />
+                  <Field id={`f-${table}-${k}`} type={type} opts={opts} value={form[k]} form={form} table={table} toast={toast} onChange={v => setForm(f => ({ ...f, [k]: v }))} />
                 </div>
               ))}
               {!isPosts && <div className="flex items-center justify-between rounded-lg border border-line px-4 py-3">
@@ -606,8 +646,9 @@ function LayoutForm({ toast }) {
     loadSettings().then(r => { const full = { ...DEMO_SETTINGS, ...(r || {}) }; setRow(full); setHidden(new Set(full.hidden || [])) })
       .catch(e => { toast(e.message, 'error'); setRow({ ...DEMO_SETTINGS }); setHidden(new Set(DEMO_SETTINGS.hidden)) })
   }, [])
-  const flip = k => { const h = new Set(hidden); h.has(k) ? h.delete(k) : h.add(k); setHidden(h); setDirty(true) }
-  const setGroup = (keys, show) => { const h = new Set(hidden); keys.forEach(k => show ? h.delete(k) : h.add(k)); setHidden(h); setDirty(true) }
+  // Cập nhật theo bản mới nhất (bấm nhanh nhiều công tắc liên tiếp không bị mất lần bấm trước)
+  const flip = k => { setHidden(prev => { const h = new Set(prev); h.has(k) ? h.delete(k) : h.add(k); return h }); setDirty(true) }
+  const setGroup = (keys, show) => { setHidden(prev => { const h = new Set(prev); keys.forEach(k => show ? h.delete(k) : h.add(k)); return h }); setDirty(true) }
   const save = async () => {
     setBusy(true)
     const { error } = await supabase.from('settings').upsert({ ...row, id: 1, hidden: [...hidden] })
@@ -893,6 +934,7 @@ export default function Admin() {
           {page === 'dashboard' && <Dashboard go={go} counts={counts} />}
           {page === 'settings' && <SettingsForm toast={toast} />}
           {page === 'layout' && <LayoutForm toast={toast} />}
+          {page === 'selftest' && <SelfTestAdmin toast={toast} />}
           {page === 'cursor' && <CursorPage toast={toast} />}
           {page === 'hero' && <HeroAdmin toast={toast} />}
           {page === 'season' && <SeasonAdmin toast={toast} />}

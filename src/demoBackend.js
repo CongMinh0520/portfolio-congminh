@@ -4,7 +4,7 @@ import { demo } from './data.js'
 import { at } from './adminLang.js'
 import { computeStats, sampleViews } from './statsCalc.js'
 
-const KEY = 'cm-demo-db-v11', AUTH = 'cm-demo-auth-v1'
+const KEY = 'cm-demo-db-v12', AUTH = 'cm-demo-auth-v1'
 export const DEMO_EMAIL = 'admin@demo.com', DEMO_PASSWORD = 'demo123'
 
 const clone = o => JSON.parse(JSON.stringify(o))

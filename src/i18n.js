@@ -9,7 +9,10 @@ export const LANGS = [['vi', 'Tiếng Việt', 'VI'], ['en', 'English', 'EN']]
 
 /* ---------- Ngôn ngữ khách đã chọn (lưu trong trình duyệt của khách) ---------- */
 const KEY = 'cm-lang'
-let choice = (() => { try { const v = localStorage.getItem(KEY); return v === 'vi' || v === 'en' ? v : null } catch { return null } })()
+// Link có ?lang=en (VD từ RSS tiếng Anh) mở đúng ngôn ngữ đó
+const fromUrl = (() => { try { const q = new URLSearchParams(location.search).get('lang'); return q === 'vi' || q === 'en' ? q : null } catch { return null } })()
+if (fromUrl) try { localStorage.setItem(KEY, fromUrl) } catch { /* chặn lưu: vẫn dùng trong phiên này */ }
+let choice = fromUrl || (() => { try { const v = localStorage.getItem(KEY); return v === 'vi' || v === 'en' ? v : null } catch { return null } })()
 const subs = new Set()
 export function chooseLang(l) {
   choice = l
@@ -44,6 +47,8 @@ export const TR_FIELDS = {
   jobs: [['period', 'Thời gian', 'text'], ['role', 'Vị trí', 'text'], ['description', 'Mô tả', 'textarea']],
   footer_links: [['label', 'Tên hiển thị', 'text']],
   posts: [['title', 'Tiêu đề', 'text'], ['excerpt', 'Tóm tắt', 'textarea'], ['tags', 'Thẻ (cách nhau bằng dấu phẩy)', 'tags'], ['content', 'Nội dung bài viết', 'markdown']],
+  bugs: [['title', 'Tiêu đề bug', 'text'], ['product', 'Sản phẩm / trang bị lỗi', 'text'], ['environment', 'Môi trường', 'text'], ['steps', 'Các bước tái hiện', 'textarea'],
+    ['expected', 'Kết quả mong đợi', 'textarea'], ['actual', 'Kết quả thực tế', 'textarea'], ['content', 'Ghi chú thêm', 'markdown'], ['tags', 'Thẻ (cách nhau bằng dấu phẩy)', 'tags']],
 }
 export const SETTINGS_TR = [['footer_tagline', 'Giới thiệu ngắn', 'textarea'], ['availability', 'Trạng thái', 'text'], ['address', 'Địa chỉ / khu vực', 'text'], ['working_hours', 'Giờ làm việc', 'text'], ['copyright', 'Dòng bản quyền', 'text'], ['footer_note', 'Ghi chú cuối trang', 'text']]
 
@@ -59,7 +64,7 @@ export function localizeRow(row, fields, lang) {
 }
 // Bài viết / dự án: giữ link theo tiêu đề tiếng Việt để đổi ngôn ngữ không đổi đường dẫn
 export const localizeList = (rows, table, lang) => (lang === 'en'
-  ? rows.map(r => ({ ...localizeRow(r, TR_FIELDS[table] || [], lang), ...(table === 'posts' || table === 'projects' ? { slug: r.slug || r.title } : {}) }))
+  ? rows.map(r => ({ ...localizeRow(r, TR_FIELDS[table] || [], lang), ...(table === 'posts' || table === 'projects' || table === 'bugs' ? { slug: r.slug || r.title } : {}) }))
   : rows)
 export const localizeSettings = (s, lang) => localizeRow(s, SETTINGS_TR, lang)
 
@@ -127,6 +132,26 @@ export const UI = {
     'nf.bug.actual': 'Thực tế', 'nf.bug.actualv': 'Trang 404 (chính là trang này)', 'nf.bug.status': 'Cách khắc phục', 'nf.bug.statusv': 'Về trang chủ hoặc xem Blog',
     'proj.back': '← Tất cả dự án', 'proj.label': 'DỰ ÁN', 'proj.role': 'Vai trò', 'proj.time': 'Thời gian', 'proj.cat': 'Danh mục', 'proj.tools': 'Công cụ',
     'proj.empty': 'Dự án chưa có mô tả chi tiết.', 'proj.link': 'Xem sản phẩm / tài liệu ↗', 'proj.unit': 'Dự án', 'proj.notfound': 'dự án',
+    // Bug mẫu
+    'nav.bugs': 'Bug mẫu', 'bugs.label': 'BUG REPORT', 'bugs.title': 'Bug mình đã tìm ra', 'bugs.intro': 'Bug report mẫu viết như khi làm thật: bước tái hiện, kết quả mong đợi và thực tế, mức độ nghiêm trọng.',
+    'bugs.self': 'Mình cũng đã tự kiểm thử chính trang web này.', 'bugs.selfLink': 'Xem kết quả →', 'bugs.open': 'Xem bug report', 'bugs.back': '← Tất cả bug mẫu', 'bugs.unit': 'Bug', 'bugs.notfound': 'bug report',
+    'bug.sev': 'Mức độ', 'bug.pri': 'Ưu tiên', 'bug.status': 'Trạng thái', 'bug.found': 'Ngày phát hiện', 'bug.product': 'Sản phẩm', 'bug.env': 'Môi trường',
+    'bug.steps': 'Các bước tái hiện', 'bug.expected': 'Kết quả mong đợi', 'bug.actual': 'Kết quả thực tế', 'bug.evidence': 'Bằng chứng', 'bug.notes': 'Ghi chú', 'bug.visit': 'Mở nơi xảy ra lỗi ↗',
+    'sev.critical': 'Critical', 'sev.major': 'Major', 'sev.minor': 'Minor', 'sev.trivial': 'Trivial', // thuật ngữ quen thuộc trong nghề QA, giữ tiếng Anh
+    'pri.high': 'High', 'pri.medium': 'Medium', 'pri.low': 'Low',
+    'st.reported': 'Đã báo cáo', 'st.fixed': 'Đã sửa', 'st.wontfix': 'Không sửa',
+    // Trang Kiểm thử web
+    'qa.label': 'KIỂM THỬ', 'qa.title': 'Mình đã test chính trang web này', 'qa.scores': 'Điểm Lighthouse', 'qa.mobile': 'Điện thoại', 'qa.desktop': 'Máy tính',
+    'qa.perf': 'Hiệu năng', 'qa.a11y': 'Trợ năng', 'qa.best': 'Thực hành tốt', 'qa.seo': 'SEO', 'qa.measured': 'Đo ngày {d} bằng {tool}.',
+    'qa.envs': 'Trình duyệt và thiết bị đã test', 'qa.checks': 'Checklist trợ năng và chất lượng', 'qa.found': 'Bug tự tìm ra trên web này',
+    'qa.r.pass': 'Đạt', 'qa.r.issue': 'Có lỗi', 'qa.r.todo': 'Chưa test', 'qa.f.fixed': 'Đã sửa', 'qa.f.open': 'Đang theo dõi', 'qa.f.note': 'Ghi nhận',
+    'qa.ok': 'Đạt', 'qa.no': 'Chưa đạt', 'qa.seo.desc': 'Kết quả tự kiểm thử trang web portfolio: điểm Lighthouse, trình duyệt đã test, checklist trợ năng và các bug đã tìm ra.',
+    // CV online
+    'cv.view': 'Xem CV online', 'cv.print': 'In / Lưu PDF', 'cv.pdf': 'Tải file PDF', 'cv.tip': 'Mẹo: trong hộp thoại in, chọn "Lưu dưới dạng PDF" và tắt "Đầu trang và chân trang".',
+    'cv.role': 'Manual QA Tester', 'cv.about': 'Giới thiệu', 'cv.skills': 'Kỹ năng', 'cv.exp': 'Kinh nghiệm', 'cv.projects': 'Dự án', 'cv.bugs': 'Bug report mẫu', 'cv.web': 'Portfolio',
+    'cv.seo': 'CV online của Công Minh, Manual QA Tester: kỹ năng, kinh nghiệm và dự án. In hoặc lưu PDF ngay trên trình duyệt.',
+    // RSS
+    'rss.follow': 'Theo dõi qua RSS', 'rss.title': 'RSS',
   },
   en: {
     'nav.home': 'Home', 'nav.skills': 'Skills', 'nav.experience': 'Experience', 'nav.work': 'Work', 'nav.blog': 'Blog', 'nav.contact': 'Contact',
@@ -160,5 +185,21 @@ export const UI = {
     'nf.bug.actual': 'Actual', 'nf.bug.actualv': 'A 404 page (this one)', 'nf.bug.status': 'Workaround', 'nf.bug.statusv': 'Go back home or browse the blog',
     'proj.back': '← All projects', 'proj.label': 'PROJECT', 'proj.role': 'Role', 'proj.time': 'Duration', 'proj.cat': 'Category', 'proj.tools': 'Tools',
     'proj.empty': 'This project has no detailed description yet.', 'proj.link': 'View product / docs ↗', 'proj.unit': 'project', 'proj.notfound': 'project',
+    'nav.bugs': 'Bug reports', 'bugs.label': 'BUG REPORTS', 'bugs.title': 'Bugs I have found', 'bugs.intro': 'Sample bug reports written the way I write them at work: steps to reproduce, expected vs actual result, severity.',
+    'bugs.self': 'I also tested this very website.', 'bugs.selfLink': 'See the results →', 'bugs.open': 'Read the report', 'bugs.back': '← All bug reports', 'bugs.unit': 'bug', 'bugs.notfound': 'bug report',
+    'bug.sev': 'Severity', 'bug.pri': 'Priority', 'bug.status': 'Status', 'bug.found': 'Found on', 'bug.product': 'Product', 'bug.env': 'Environment',
+    'bug.steps': 'Steps to reproduce', 'bug.expected': 'Expected result', 'bug.actual': 'Actual result', 'bug.evidence': 'Evidence', 'bug.notes': 'Notes', 'bug.visit': 'Open where it happens ↗',
+    'sev.critical': 'Critical', 'sev.major': 'Major', 'sev.minor': 'Minor', 'sev.trivial': 'Trivial',
+    'pri.high': 'High', 'pri.medium': 'Medium', 'pri.low': 'Low',
+    'st.reported': 'Reported', 'st.fixed': 'Fixed', 'st.wontfix': "Won't fix",
+    'qa.label': 'TESTING', 'qa.title': 'I tested this very website', 'qa.scores': 'Lighthouse scores', 'qa.mobile': 'Mobile', 'qa.desktop': 'Desktop',
+    'qa.perf': 'Performance', 'qa.a11y': 'Accessibility', 'qa.best': 'Best practices', 'qa.seo': 'SEO', 'qa.measured': 'Measured on {d} with {tool}.',
+    'qa.envs': 'Browsers and devices tested', 'qa.checks': 'Accessibility and quality checklist', 'qa.found': 'Bugs I found on this site',
+    'qa.r.pass': 'Pass', 'qa.r.issue': 'Issue', 'qa.r.todo': 'Not tested yet', 'qa.f.fixed': 'Fixed', 'qa.f.open': 'Monitoring', 'qa.f.note': 'Noted',
+    'qa.ok': 'Pass', 'qa.no': 'Not yet', 'qa.seo.desc': 'Results of testing this portfolio website: Lighthouse scores, browsers tested, an accessibility checklist and the bugs found.',
+    'cv.view': 'View CV online', 'cv.print': 'Print / Save as PDF', 'cv.pdf': 'Download PDF file', 'cv.tip': 'Tip: in the print dialog choose "Save as PDF" and turn off "Headers and footers".',
+    'cv.role': 'Manual QA Tester', 'cv.about': 'Profile', 'cv.skills': 'Skills', 'cv.exp': 'Experience', 'cv.projects': 'Projects', 'cv.bugs': 'Sample bug reports', 'cv.web': 'Portfolio',
+    'cv.seo': 'Online CV of Công Minh, Manual QA Tester: skills, experience and projects. Print or save as PDF right in your browser.',
+    'rss.follow': 'Follow via RSS', 'rss.title': 'RSS',
   },
 }

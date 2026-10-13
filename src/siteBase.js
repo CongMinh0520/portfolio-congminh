@@ -1,6 +1,6 @@
 // Hằng số của trang (mục, màu nền thẻ) và cài đặt mẫu. Nhỏ, dùng cả ở trang chủ lẫn Admin.
 // Nội dung mẫu dài (bài viết, dự án…) nằm ở data.js và chỉ tải khi cần.
-export const links = [['home','Home'],['skills','Skills'],['experience','Experience'],['work','Work'],['blog','Blog']]
+export const links = [['home','Home'],['skills','Skills'],['experience','Experience'],['work','Work'],['bugs','Bugs'],['blog','Blog']]
 // Các phần trên trang chủ có thể ẩn/hiện trong Admin → Bố cục trang chủ (lưu chung cột settings.hidden)
 export const SECTIONS = [
   ['Đầu trang', 'Menu trên cùng và phần mở đầu', [
@@ -8,6 +8,8 @@ export const SECTIONS = [
     ['sec_hero_badge', 'Huy hiệu “Open to QA opportunities”'],
     ['sec_hero_lead', 'Đoạn giới thiệu dưới tiêu đề'],
     ['sec_hero_buttons', 'Nút “Xem dự án” và “Liên hệ”'],
+    ['sec_hero_cv', 'Nút “Tải CV” (file PDF)'],
+    ['sec_hero_cv_online', 'Link “Xem CV online” dưới các nút'],
     ['sec_hero_stats', 'Dãy số liệu (năm kinh nghiệm, bug, dự án)'],
     ['sec_hero_visual', 'Hình tròn đại diện và 2 thẻ số liệu'] ]],
   ['Các mục nội dung', 'Ẩn một mục thì link tới mục đó trên menu cũng tự ẩn', [
@@ -15,17 +17,27 @@ export const SECTIONS = [
     ['sec_skills', 'Mục Kỹ năng'],
     ['sec_experience', 'Mục Kinh nghiệm'],
     ['sec_work', 'Mục Dự án'],
+    ['sec_bugs', 'Mục Bug mẫu (tự ẩn khi chưa có bug nào đang hiển thị)'],
+    ['sec_selftest_line', 'Dòng “Mình cũng đã tự kiểm thử…” dẫn tới trang Kiểm thử'],
     ['sec_blog', 'Mục Blog'],
     ['sec_contact', 'Khối Liên hệ cuối trang'] ]],
   ['Footer', 'Chân trang', [
     ['sec_footer', 'Toàn bộ footer'],
     ['sec_footer_about', 'Cột giới thiệu (logo, trạng thái, CV)'],
+    ['sec_footer_cv', 'Nút “Tải CV” ở cột giới thiệu'],
+    ['sec_footer_cv_online', 'Link “Xem CV online” ở cột giới thiệu'],
     ['sec_footer_menu', 'Cột Menu'],
     ['sec_footer_contact', 'Cột Liên hệ'],
     ['sec_footer_socials', 'Cột Kết nối (mạng xã hội)'],
-    ['sec_footer_bottom', 'Dòng bản quyền'] ]],
+    ['sec_footer_bottom', 'Dòng bản quyền'],
+    ['sec_footer_selftest', 'Link trang Kiểm thử ở dòng cuối'],
+    ['sec_footer_rss', 'Link RSS ở dòng cuối'] ]],
+  ['Trang riêng', 'Tắt một trang thì mọi link tới trang đó tự ẩn, mở link cũ sẽ ra trang 404', [
+    ['sec_page_cv', 'Trang CV online (/cv)'],
+    ['sec_page_selftest', 'Trang Kiểm thử web (/kiem-thu)'],
+    ['sec_blog_rss', 'Link “Theo dõi qua RSS” ở trang Blog'] ]],
 ]
-export const SECTION_OF = { skills: 'sec_skills', experience: 'sec_experience', work: 'sec_work', blog: 'sec_blog', contact: 'sec_contact' }
+export const SECTION_OF = { skills: 'sec_skills', experience: 'sec_experience', work: 'sec_work', bugs: 'sec_bugs', blog: 'sec_blog', contact: 'sec_contact' }
 
 export const marquee = ['MANUAL TESTING','TEST CASE','API TESTING','MOBILE APP','BLOCKCHAIN WALLET','BUG TRACKING']
 export const meta = [['2','Năm kinh nghiệm QA'],['4','Lĩnh vực đã test'],['Web · App','Nền tảng']]

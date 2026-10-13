@@ -11,6 +11,9 @@ export const slugify = (s = '') => String(s)
 
 export const postPath = p => `/blog/${slugify(p.slug || p.title)}-${p.id}`
 export const projectPath = p => `/du-an/${slugify(p.slug || p.title)}-${p.id}`
+export const bugPath = b => `/bug/${slugify(b.slug || b.title)}-${b.id}`
+/** Mã hiển thị của bug: id 7 → BUG-007 */
+export const bugCode = b => `BUG-${String(b?.id ?? 0).padStart(3, '0')}`
 export const tagPath = t => `/blog?the=${encodeURIComponent(t)}`
 /** Trang danh sách Blog có lọc thẻ và số trang: /blog, /blog?trang=2, /blog?the=QA&trang=3 */
 export const blogPath = (tag = '', n = 1) => {
