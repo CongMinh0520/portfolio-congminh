@@ -20,6 +20,13 @@ const plain = (s, n = 160) => { const t = String(s || '').replace(/[#*_`>\[\]()!
 const ogImage = (origin, img, title, kind, date) => /^https?:\/\//i.test(img || '') ? img
   : `${origin}/api/og?${new URLSearchParams({ title, kind, ...(date ? { date } : {}) })}`
 
+// Trang tĩnh: đường dẫn, tiêu đề, mô tả, chữ nhỏ trên ảnh chia sẻ (vercel.json truyền ?page=…)
+const STATIC = {
+  cv: { path: '/cv', title: 'CV', kind: 'Manual QA Tester', desc: 'CV online của Công Minh, Manual QA Tester: kỹ năng, kinh nghiệm và dự án. In hoặc lưu PDF ngay trên trình duyệt.' },
+  'kiem-thu': { path: '/kiem-thu', title: 'Mình đã test chính trang web này', kind: 'QA', desc: 'Kết quả tự kiểm thử trang web portfolio: điểm Lighthouse, trình duyệt đã test, checklist trợ năng và các bug đã tìm ra.' },
+  blog: { path: '/blog', title: 'Blog', kind: 'Blog', desc: 'Bài viết về kiểm thử phần mềm, tự động hóa và chất lượng sản phẩm.' },
+}
+
 export async function GET(request) {
   const origin = originOf(request)
   const q = new URL(request.url).searchParams
@@ -55,6 +62,17 @@ export async function GET(request) {
     const [b] = (await rest(`bugs?select=id,title,product,actual,image&id=eq.${id}&visible=eq.true`)) || []
     if (b) meta = { title: `${b.title} — ${SITE_NAME}`, ogTitle: b.title, desc: plain([b.product, b.actual].filter(Boolean).join(' — ')), type: 'article', image: ogImage(origin, b.image, b.title, 'Bug report'), canonical: origin + bugPath(b) }
     else status = 404
+  } else if (type === 'static' && STATIC[q.get('page')]) {
+    // /cv, /kiem-thu, /blog: tiêu đề, mô tả, ảnh chia sẻ riêng (giống useSeo trong src/App.jsx)
+    const sp = STATIC[q.get('page')]
+    let title = sp.title, path = sp.path, image = ''
+    if (q.get('page') === 'blog') {
+      const tag = q.get('the') || '', n = Math.max(1, parseInt(q.get('trang'), 10) || 1)
+      title = `${tag ? `Blog #${tag}` : 'Blog'}${n > 1 ? ` — Trang ${n}` : ''}`
+      path = '/blog' + ([tag && `the=${encodeURIComponent(tag)}`, n > 1 && `trang=${n}`].filter(Boolean).join('&').replace(/^./, '?$&'))
+    }
+    if (q.get('page') === 'cv') { const data = await dataP; const av = homeInfo(data?.settings).avatar; if (/^https?:\/\//i.test(av)) image = av }
+    meta = { title: `${title} — ${SITE_NAME}`, ogTitle: title, desc: sp.desc, type: 'website', image: image || ogImage(origin, '', title, sp.kind), canonical: origin + path }
   }
 
   if (meta) {

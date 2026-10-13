@@ -231,13 +231,17 @@ function Login({ brand }) {
   const [email, setEmail] = useState(demoMode ? demoAccount().email : ''); const [pw, setPw] = useState(demoMode ? demoAccount().password : '')
   const [err, setErr] = useState(''); const [busy, setBusy] = useState(false)
   const submit = async e => {
-    e.preventDefault(); setBusy(true); setErr('')
+    e.preventDefault()
+    // Tự báo lỗi bằng ngôn ngữ của Admin (thông báo mặc định của trình duyệt luôn là tiếng Anh/ngôn ngữ máy)
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) { setErr(a('Nhập email hợp lệ.')); document.getElementById('login-email')?.focus(); return }
+    if (!pw) { setErr(a('Nhập mật khẩu.')); document.getElementById('login-pw')?.focus(); return }
+    setBusy(true); setErr('')
     const { error } = await supabase.auth.signInWithPassword({ email, password: pw })
     setBusy(false); if (error) setErr(error.message)
   }
   return (
     <div className="grid min-h-screen place-items-center px-4">
-      <form onSubmit={submit} className="w-full max-w-[400px] space-y-4 rounded-2xl border border-line bg-card p-7 shadow-[0_30px_80px_#00000080]">
+      <form onSubmit={submit} noValidate className="w-full max-w-[400px] space-y-4 rounded-2xl border border-line bg-card p-7 shadow-[0_30px_80px_#00000080]">
         <div className="mb-2 flex items-center gap-3">
           <BrandIcon brand={brand} className="size-10 rounded-xl text-sm" />
           <div><h1 className="text-lg font-bold leading-tight">{a('Đăng nhập quản trị')}</h1><p className="text-xs text-muted"><BrandLogo brand={brand} imgClass="h-4" /> Portfolio</p></div>
@@ -247,7 +251,7 @@ function Login({ brand }) {
         <label htmlFor="login-pw" className="block"><span className="mb-1.5 block text-xs font-medium text-muted">{a('Mật khẩu')}</span>
           <input id="login-pw" className={input} type="password" value={pw} onChange={e => setPw(e.target.value)} required /></label>
         {demoMode && <p className="rounded-lg border border-purple/40 bg-purple/10 p-3 text-xs leading-relaxed text-[#c9cbd8]">{rich(a('Chế độ demo, tài khoản đã điền sẵn: {email} / {password}'), { email: <b>{demoAccount().email}</b>, password: <b>{demoAccount().password}</b> })}</p>}
-        {err && <p className="text-sm text-red-400">{err}</p>}
+        {err && <p role="alert" className="text-sm text-red-400">{err}</p>}
         <button disabled={busy} className={`${btn} ${grad} w-full py-2.5`}>{busy ? a('Đang đăng nhập…') : a('Đăng nhập')}</button>
         <a href={href('/')} className="block text-center text-xs text-muted hover:text-white">← {a('Về trang chủ')}</a>
       </form>
@@ -844,7 +848,7 @@ export default function Admin() {
   const go = (k, add) => { if (k !== page) navigate(adminPath(k)); setDrawer(false); setOpenNew(add ? Date.now() : 0) }
   // Số trên tab trình duyệt: tin chưa đọc + bài chờ duyệt (tùy cài đặt Thông báo)
   const tabN = (notify.events.message.tab ? counts.messages?.waiting || 0 : 0) + (notify.events.post.tab ? counts.posts?.waiting || 0 : 0)
-  useEffect(() => { setTabCount(session ? tabN : 0, `${at(TITLES[page]) || 'Admin'} — Admin`) }, [tabN, page, session, adminLang])
+  useEffect(() => { setTabCount(session ? tabN : 0, session ? `${at(TITLES[page]) || 'Admin'} — Admin` : `${at('Đăng nhập')} — Admin`) }, [tabN, page, session, adminLang])
   const toggleCollapse = () => { const v = !collapsed; setCollapsed(v); storage.set('cm-admin-collapsed', v ? '1' : '0') }
 
   if (session === undefined || !adminDictReady()) return <p className="mt-24 text-center text-muted">{a('Đang tải…')}</p>

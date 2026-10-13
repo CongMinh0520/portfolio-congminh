@@ -103,8 +103,8 @@ export default function Contact({ settings: s, socials = [] }) {
         <h2 className="mt-2.5 text-[clamp(26px,3.6vw,40px)] font-bold leading-[1.12] tracking-tight [text-wrap:balance]">{t('ct.title')}</h2>
         <p className="mt-4 max-w-[420px] leading-relaxed text-muted">{t('ct.text')}</p>
         <ul className="mt-8 space-y-3 text-sm">
-          {s.email && <li className="flex items-center gap-3"><span className="grid size-9 flex-none place-items-center rounded-lg bg-white/5">✉️</span><a href={`mailto:${s.email}`} className="break-all transition hover:text-pink">{s.email}</a></li>}
-          {s.phone && <li className="flex items-center gap-3"><span className="grid size-9 flex-none place-items-center rounded-lg bg-white/5">📞</span><a href={`tel:${tel}`} className="transition hover:text-pink">{s.phone}</a></li>}
+          {s.email && <li className="flex items-center gap-3"><span className="grid size-9 flex-none place-items-center rounded-lg bg-white/5">✉️</span><a href={`mailto:${s.email}`} className="inline-flex min-h-6 items-center break-all transition hover:text-pink">{s.email}</a></li>}
+          {s.phone && <li className="flex items-center gap-3"><span className="grid size-9 flex-none place-items-center rounded-lg bg-white/5">📞</span><a href={`tel:${tel}`} className="inline-flex min-h-6 items-center transition hover:text-pink">{s.phone}</a></li>}
           {s.address && <li className="flex items-center gap-3"><span className="grid size-9 flex-none place-items-center rounded-lg bg-white/5">📍</span><span className="text-muted">{s.address}</span></li>}
         </ul>
         {socials.length > 0 && (

@@ -100,7 +100,7 @@ export function heroFor(raw, lang) {
 export const UI = {
   vi: {
     'nav.home': 'Trang chủ', 'nav.skills': 'Kỹ năng', 'nav.experience': 'Kinh nghiệm', 'nav.work': 'Dự án', 'nav.blog': 'Blog', 'nav.contact': 'Liên hệ',
-    'nav.open': 'Mở menu', 'nav.lang': 'Đổi ngôn ngữ', skip: 'Bỏ qua, tới nội dung chính',
+    'nav.open': 'Mở menu', 'nav.close': 'Đóng menu', 'nav.lang': 'Đổi ngôn ngữ', skip: 'Bỏ qua, tới nội dung chính',
     'hero.primary': 'Xem dự án', 'hero.secondary': 'Liên hệ', 'hero.cv': 'Tải CV',
     'skills.label': 'KỸ NĂNG', 'skills.title': 'Bộ kỹ năng kiểm thử', 'skills.intro': 'Từ đọc hiểu yêu cầu, viết test case đến báo bug và kiểm tra lại sau khi sửa.',
     'exp.label': 'KINH NGHIỆM', 'exp.title': 'Kinh nghiệm làm việc',
@@ -155,7 +155,7 @@ export const UI = {
   },
   en: {
     'nav.home': 'Home', 'nav.skills': 'Skills', 'nav.experience': 'Experience', 'nav.work': 'Work', 'nav.blog': 'Blog', 'nav.contact': 'Contact',
-    'nav.open': 'Open menu', 'nav.lang': 'Change language', skip: 'Skip to main content',
+    'nav.open': 'Open menu', 'nav.close': 'Close menu', 'nav.lang': 'Change language', skip: 'Skip to main content',
     'hero.primary': 'View projects', 'hero.secondary': 'Contact', 'hero.cv': 'Download CV',
     'skills.label': 'SKILLS', 'skills.title': 'Testing skill set', 'skills.intro': 'From understanding requirements and writing test cases to reporting bugs and retesting fixes.',
     'exp.label': 'EXPERIENCE', 'exp.title': 'Work experience',

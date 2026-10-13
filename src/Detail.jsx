@@ -95,7 +95,7 @@ export const readMins = t => Math.max(1, Math.round(String(t || '').split(/\s+/)
 const tagsOf = p => (Array.isArray(p?.tags) ? p.tags : String(p?.tags || '').split(',')).map(s => String(s).trim()).filter(Boolean)
 
 export const Tag = ({ t, small }) => (
-  <a href={href(tagPath(t))} className={`inline-flex rounded-full border border-line bg-white/5 text-[#c9cbd8] transition hover:border-purple hover:text-white ${small ? 'px-2 py-0.5 text-[11px]' : 'px-3 py-1 text-xs'}`}>#{t}</a>
+  <a href={href(tagPath(t))} className={`inline-flex min-h-6 items-center rounded-full border border-line bg-white/5 text-[#c9cbd8] transition hover:border-purple hover:text-white ${small ? 'px-2 py-0.5 text-[11px]' : 'px-3 py-1 text-xs'}`}>#{t}</a>
 )
 
 /** Thẻ bài viết dùng chung: trang chủ, trang Blog, bài liên quan */
@@ -114,7 +114,7 @@ export function BlogCard({ po, compact }) {
         <h3 className={`mb-2 font-semibold ${compact ? 'text-[17px]' : 'text-[19px]'}`}><a href={link} className="block transition hover:text-pink">{po.title}</a></h3>
         {!compact && po.excerpt && <p className="text-[14.5px] text-muted">{po.excerpt}</p>}
         {tags.length > 0 && <div className="mt-3 flex flex-wrap gap-1.5">{tags.slice(0, 3).map(t => <Tag key={t} t={t} small />)}</div>}
-        {!compact && <a href={link} className="mt-3.5 inline-flex gap-1.5 text-[13px] font-semibold">{t('post.read')} <span className="transition group-hover:translate-x-1.5">→</span></a>}
+        {!compact && <a href={link} className="mt-3.5 inline-flex min-h-6 items-center gap-1.5 text-[13px] font-semibold">{t('post.read')} <span className="transition group-hover:translate-x-1.5">→</span></a>}
       </div>
     </div>
   )
