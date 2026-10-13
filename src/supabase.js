@@ -28,8 +28,9 @@ export async function uploadImage(file, max = 900) {
   const blob = keep ? file : await shrink(file, max)
   if (demoMode) return new Promise((ok, fail) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = fail; r.readAsDataURL(blob) })
   const ext = blob.type === 'image/webp' ? 'webp' : (file.name.split('.').pop() || 'img')
+  // Tên file có giờ + mã ngẫu nhiên nên không bao giờ bị ghi đè → cho trình duyệt giữ 1 năm
   const path = `hero/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
-  const { error } = await supabase.storage.from('media').upload(path, blob, { contentType: blob.type || 'image/x-icon', upsert: false })
+  const { error } = await supabase.storage.from('media').upload(path, blob, { contentType: blob.type || 'image/x-icon', upsert: false, cacheControl: '31536000' })
   if (error) throw new Error(at('Không tải được ảnh: {msg}. Đã chạy supabase/migration-hero.sql chưa?', { msg: error.message }))
   return supabase.storage.from('media').getPublicUrl(path).data.publicUrl
 }
@@ -41,7 +42,7 @@ export async function uploadPdf(file) {
   if (file.size > limit * 1024 * 1024) throw new Error(at('File lớn quá (tối đa {n} MB).', { n: limit }))
   if (demoMode) return new Promise((ok, fail) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = fail; r.readAsDataURL(file) })
   const path = `cv/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.pdf`
-  const { error } = await supabase.storage.from('media').upload(path, file, { contentType: 'application/pdf', upsert: false })
+  const { error } = await supabase.storage.from('media').upload(path, file, { contentType: 'application/pdf', upsert: false, cacheControl: '31536000' })
   if (error) throw new Error(at('Không tải được file: {msg}', { msg: error.message }))
   return supabase.storage.from('media').getPublicUrl(path).data.publicUrl
 }

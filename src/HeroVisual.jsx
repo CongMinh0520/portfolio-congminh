@@ -106,7 +106,7 @@ export default function HeroVisual({ cfg, className = 'w-[clamp(260px,32vw,400px
       }}>
       {a.ring && <div className={`absolute -inset-[18px] rounded-full border border-dashed border-white/20 ${still ? '' : 'animate-spin-slow'}`} />}
       {a.image
-        ? <img src={a.image} alt="" className="absolute inset-[6px] size-[calc(100%-12px)] rounded-full object-cover" style={{ objectPosition: a.position }} />
+        ? <img src={a.image} alt="" decoding="async" fetchPriority="high" className="absolute inset-[6px] size-[calc(100%-12px)] rounded-full object-cover" style={{ objectPosition: a.position }} />
         : a.text && <span className="text-[clamp(64px,9vw,110px)] font-black tracking-tighter" style={{ color: a.text_color, opacity: a.text_opacity / 100 }}>{a.text}</span>}
       <StatCard c={v.card1} anim={still ? '' : 'animate-float-rev'} className="right-[-2%] top-[6%] sm:right-[-8%]" />
       <StatCard c={v.card2} anim={still ? '' : 'animate-float'} className="bottom-[8%] left-[-2%] sm:left-[-8%]" />

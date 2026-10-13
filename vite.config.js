@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { viteSingleFile } from 'vite-plugin-singlefile'
@@ -27,8 +27,26 @@ const appShell = () => ({
   },
 })
 
+// Mở sẵn kết nối tới Supabase ngay từ lúc trình duyệt đọc HTML (tiết kiệm bước bắt tay DNS/TLS cho request dữ liệu đầu tiên)
+const preconnect = () => {
+  let origin = ''
+  return {
+    name: 'preconnect-supabase',
+    configResolved(c) { try { origin = new URL(loadEnv(c.mode, c.root, 'VITE_').VITE_SUPABASE_URL).origin } catch { origin = '' } },
+    transformIndexHtml: () => origin ? [{ tag: 'link', attrs: { rel: 'preconnect', href: origin, crossorigin: '' }, injectTo: 'head-prepend' }] : [],
+  }
+}
+
 export default defineConfig({
-  plugins: [react(), tailwindcss(), ...(process.env.SINGLEFILE ? [viteSingleFile()] : [appShell()])],
+  plugins: [react(), tailwindcss(), preconnect(), ...(process.env.SINGLEFILE ? [viteSingleFile()] : [appShell()])],
+  build: {
+    target: 'es2022', // trình duyệt từ 2022 trở lên: bỏ bớt mã chuyển đổi cú pháp cũ
+    // Bản deploy: tách React ra file riêng. File này hầu như không đổi giữa các lần deploy nên khách giữ cache được
+    // (cache dài 1 năm cho /assets), chỉ tải lại phần code của bạn khi có bản mới. Bản 1 file (demo) không tách.
+    ...(process.env.SINGLEFILE ? {} : { rolldownOptions: { output: { codeSplitting: { groups: [
+      { name: 'react', test: /node_modules[\\/](react|react-dom|scheduler)[\\/]/, priority: 20 },
+    ] } } } }),
+  },
   // Bản 1 file (demo) không có máy chủ trả trang cho link thật → dùng link dạng #/blog/...
   define: { 'import.meta.env.VITE_HASH_ROUTER': JSON.stringify(process.env.SINGLEFILE ? '1' : ''), __APP_INFO__: JSON.stringify(APP_INFO) },
 })

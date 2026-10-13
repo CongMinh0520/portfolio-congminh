@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { coverOf } from './autoArt.js'
 import { href, postPath, projectPath, tagPath, blogPath, slugify } from './router.js'
 import { useT } from './i18n.js'
+import { warmPost } from './prefetch.js'
 
 const grad = 'bg-gradient-to-r from-pink to-purple'
 const wrap = 'mx-auto w-[min(760px,100%-32px)] sm:w-[min(760px,100%-48px)]'
@@ -82,7 +83,7 @@ export function Markdown({ text = '' }) {
       blocks.push(<blockquote key={i} className="rounded-r-xl border-l-2 border-pink bg-white/[0.03] px-5 py-3 text-muted">{inline(q.join(' '), i)}</blockquote>); continue
     }
     const img = l.trim().match(/^!\[([^\]]*)\]\((https?:[^)\s]+)\)$/)
-    if (img) { blocks.push(<img key={i} src={img[2]} alt={unesc(img[1])} loading="lazy" className="w-full rounded-xl border border-line bg-[#0b0d16]" />); i++; continue }
+    if (img) { blocks.push(<img key={i} src={img[2]} alt={unesc(img[1])} loading="lazy" decoding="async" className="w-full rounded-xl border border-line bg-[#0b0d16]" />); i++; continue }
     const para = []; while (i < lines.length && lines[i].trim() && !/^(#{1,3} |\s*[-*+] |\s*\d+\. |>|```|!\[)/.test(lines[i])) para.push(lines[i++])
     blocks.push(<p key={i}>{inline(para.join(' '), i)}</p>)
   }
@@ -100,11 +101,11 @@ export const Tag = ({ t, small }) => (
 /** Thẻ bài viết dùng chung: trang chủ, trang Blog, bài liên quan */
 export function BlogCard({ po, compact }) {
   const { t, lang } = useT()
-  const link = href(postPath(po)), tags = tagsOf(po)
+  const link = href(postPath(po)), tags = tagsOf(po), cover = coverOf(po, 'post')
   return (
-    <div data-cursor-label={t('cursor.read')} className="group h-full overflow-hidden rounded-2xl border border-line bg-gradient-to-b from-[#171a2c] to-card transition duration-300 hover:-translate-y-1.5 hover:border-purple/60 hover:shadow-[0_20px_50px_#6650ff22]">
+    <div data-cursor-label={t('cursor.read')} {...warmPost(po, cover)} className="group h-full overflow-hidden rounded-2xl border border-line bg-gradient-to-b from-[#171a2c] to-card transition duration-300 hover:-translate-y-1.5 hover:border-purple/60 hover:shadow-[0_20px_50px_#6650ff22]">
       <a href={link} className="block aspect-[1200/630] overflow-hidden bg-[#0b0d16]" tabIndex={-1} aria-hidden>
-        <img src={coverOf(po, 'post')} alt="" loading="lazy" className="size-full object-cover transition duration-700 group-hover:scale-[1.06]" />
+        <img src={cover} alt="" width="1200" height="630" loading="lazy" decoding="async" className="size-full object-cover transition duration-700 group-hover:scale-[1.06]" />
       </a>
       <div className={compact ? 'p-5' : 'p-7'}>
         <p className="mb-2 flex flex-wrap gap-x-2 text-xs text-muted">
@@ -316,7 +317,7 @@ export function PostDetail({ id, posts, cta }) {
             <span>{t('post.mins', { n: readMins(po.content || po.excerpt) })}</span>
           </p>
           {tags.length > 0 && <div className="mt-4 flex flex-wrap gap-2">{tags.map(t => <Tag key={t} t={t} />)}</div>}
-          <img src={coverOf(po, 'post')} alt={po.title} className="mt-8 aspect-[1200/630] w-full rounded-2xl border border-line bg-[#0b0d16] object-cover" />
+          <img src={coverOf(po, 'post')} alt={po.title} width="1200" height="630" decoding="async" fetchPriority="high" className="mt-8 aspect-[1200/630] w-full rounded-2xl border border-line bg-[#0b0d16] object-cover" />
           {po.excerpt && (
             <div className="mt-8 rounded-xl border border-purple/30 bg-purple/[0.07] px-5 py-4 text-[15.5px] leading-relaxed text-[#dfe0ea]">
               <b className="mr-1.5 text-white">{t('post.summary')}</b>{po.excerpt}
@@ -358,7 +359,7 @@ export function ProjectDetail({ id, projects }) {
         {p.description && <p className="mt-5 text-lg leading-relaxed text-[#dfe0ea]">{p.description}</p>}
       </div>
       <div className="mx-auto mt-10 w-[min(1000px,100%-32px)] sm:w-[min(1000px,100%-48px)]">
-        <img src={coverOf(p, 'project')} alt={p.title} className="aspect-[1200/630] w-full rounded-2xl border border-line bg-[#0b0d16] object-cover" />
+        <img src={coverOf(p, 'project')} alt={p.title} width="1200" height="630" decoding="async" fetchPriority="high" className="aspect-[1200/630] w-full rounded-2xl border border-line bg-[#0b0d16] object-cover" />
       </div>
       <div className={`${wrap} mt-10`}>
         {(facts.length > 0 || tools.length > 0) && (

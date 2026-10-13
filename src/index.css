@@ -15,10 +15,10 @@
   --animate-ping-soft: ping-soft 2s infinite;
   @keyframes float { 50% { transform: translateY(-14px); } }
   @keyframes marquee { to { transform: translateX(-50%); } }
-  @keyframes ping-soft { 70% { box-shadow: 0 0 0 8px #3ddc9700; } 100% { box-shadow: 0 0 0 0 #3ddc9700; } }
+  @keyframes ping-soft { 0% { transform: scale(1); opacity: .55; } 70%, 100% { transform: scale(3.3); opacity: 0; } }
 }
 
-html { color-scheme: dark; background: #07080f; scroll-padding-top: 80px; } /* cuộn mượt do JS (smoothScrollTo) xử lý */
+html { color-scheme: dark; background: #07080f; scroll-padding-top: 80px; } /* cuộn mượt khi bấm menu: window.scrollTo({ behavior: 'smooth' }) trong App.jsx */
 body { @apply bg-bg text-[#f7f6fb] font-sans antialiased overflow-x-hidden; }
 body::before {
   content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
@@ -33,12 +33,30 @@ html[data-scrolled] .site-nav { background-color: #0a0c14e8; box-shadow: 0 12px 
 .parallax-slow { transform: translate3d(0, calc(var(--sy, 0) * 0.12px), 0); will-change: transform; }
 .parallax-fast { transform: translate3d(0, calc(var(--sy, 0) * 0.3px), 0) rotate(calc(var(--sy, 0) * 0.008deg)); will-change: transform; }
 .draw-line { transform: scaleY(var(--draw, 0)); transform-origin: top; transition: transform .15s linear; }
+/* Trình duyệt hỗ trợ scroll-driven animation: bốn hiệu ứng trên chạy bằng CSS ngoài luồng chính, không cần JS (khai báo --sy, --progress, --draw ở trên chỉ là bản dự phòng).
+   animation-timeline / animation-range phải đặt SAU shorthand animation (shorthand sẽ đặt lại hai thuộc tính này). */
+@supports (animation-timeline: scroll()) {
+  @keyframes sd-progress { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+  @keyframes sd-slow { to { transform: translate3d(0, 168px, 0); } }                       /* 1400px × 0.12 */
+  @keyframes sd-fast { to { transform: translate3d(0, 420px, 0) rotate(11.2deg); } }       /* 1400px × 0.3 ; 1400px × 0.008deg */
+  @keyframes sd-draw { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+  .scroll-progress { transform: none; animation: sd-progress linear both; animation-timeline: scroll(root block); }
+  .parallax-slow { transform: none; animation: sd-slow linear both; animation-timeline: scroll(root block); animation-range: 0px 1400px; }
+  .parallax-fast { transform: none; animation: sd-fast linear both; animation-timeline: scroll(root block); animation-range: 0px 1400px; }
+  /* Đường vẽ: từ lúc mép trên khối cách đáy cửa sổ 25% đến lúc mép dưới khối cách đáy 25% (giống công thức JS: (75% chiều cao − top) / cao) */
+  [data-draw] { view-timeline: --draw block 0px; } /* inset 0: không để scroll-padding-top của <html> làm lệch phạm vi */
+  .draw-line { transform: none; transition: none; animation: sd-draw linear both; animation-timeline: --draw; animation-range: cover 25vh cover calc(100% - 75vh); }
+}
 @keyframes rise { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: none; } }
 @keyframes pop { from { opacity: 0; transform: scale(.9); } to { opacity: 1; transform: none; } }
 .hero-in { animation: rise .9s cubic-bezier(.22,1,.36,1) both; }
 .hero-pop { animation: pop 1.1s cubic-bezier(.22,1,.36,1) both; }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } .parallax-slow, .parallax-fast { transform: none; opacity: 1; } .draw-line { transform: none; } }
+/* Giảm chuyển động: thanh tiến độ cuộn vẫn hiển thị đúng vị trí (không phải hiệu ứng chuyển động); selector theo class thắng selector * ở trên */
+@supports (animation-timeline: scroll()) {
+  @media (prefers-reduced-motion: reduce) { .scroll-progress { animation: sd-progress linear both !important; animation-timeline: scroll(root block) !important; } }
+}
 
 /* ----- Trình soạn thảo trong Admin ----- */
 .rich-editor { color: #d7d9e6; font-size: 15px; line-height: 1.75; }
@@ -67,3 +85,21 @@ html[data-scrolled] .site-nav { background-color: #0a0c14e8; box-shadow: 0 12px 
   animation: rgb-flow 6s linear infinite;
 }
 @keyframes rgb-flow { from { background-position: 0% 50%; } to { background-position: -200% 50%; } }
+
+/* Chấm nhấp nháy: vòng sóng là phần tử giả chỉ đổi transform/opacity (chạy trên GPU, không vẽ lại như box-shadow) */
+.ping-dot { position: relative; }
+.ping-dot::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: inherit; opacity: 0; animation: var(--animate-ping-soft); will-change: transform, opacity; }
+
+/* Bỏ qua dàn trang + vẽ cho các mục ngoài màn hình; "auto" nhớ chiều cao thật sau lần hiển thị đầu */
+.cv-lazy { content-visibility: auto; contain-intrinsic-size: auto 800px; }
+/* chiều cao nội dung ước lượng (chưa tính padding của mục) từng mục để thanh cuộn không nhảy khi mục được dựng lần đầu (máy tính / điện thoại) */
+#experience.cv-lazy { contain-intrinsic-size: auto 375px; }
+#work.cv-lazy { contain-intrinsic-size: auto 1125px; }
+#blog.cv-lazy { contain-intrinsic-size: auto 735px; }
+.cv-foot { contain-intrinsic-size: auto 350px; }
+@media (max-width: 767px) {
+  #experience.cv-lazy { contain-intrinsic-size: auto 495px; }
+  #work.cv-lazy { contain-intrinsic-size: auto 1780px; }
+  #blog.cv-lazy { contain-intrinsic-size: auto 1750px; }
+  .cv-foot { contain-intrinsic-size: auto 830px; }
+}
