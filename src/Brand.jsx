@@ -14,7 +14,7 @@ export const faviconOf = b => b.favicon || b.icon || defaultIconSvg(b.icon_text 
 /** Logo: ảnh đã tải lên, hoặc logo chữ (dấu chấm tô hồng) */
 export function BrandLogo({ brand, className = '', imgClass = 'h-8' }) {
   const b = brand || DEFAULT_BRAND
-  if (b.logo) return <img src={b.logo} alt={b.logo_text || 'Logo'} className={`w-auto max-w-[180px] object-contain ${imgClass}`} />
+  if (b.logo) return <img src={b.logo} alt={b.logo_text || 'Logo'} decoding="async" fetchPriority="high" className={`w-auto max-w-[180px] object-contain ${imgClass}`} />
   const parts = String(b.logo_text || DEFAULT_BRAND.logo_text).split(/(\.)/)
   return <span className={className}>{parts.map((p, i) => (p === '.' ? <span key={i} className="text-pink">.</span> : p))}</span>
 }

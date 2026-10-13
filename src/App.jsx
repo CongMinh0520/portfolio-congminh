@@ -3,16 +3,19 @@ import { links, GRADS, SECTION_OF } from './siteBase.js'
 import { useContent } from './useContent.js'
 // Admin (kèm trình soạn thảo) chỉ tải khi mở #admin, khách xem trang không phải tải phần này
 const Admin = lazy(() => import('./Admin.jsx'))
+// Hiệu ứng chuột / mùa: mã vẽ chỉ tải SAU khi trang đã hiện (lúc trình duyệt rảnh), và chỉ khi thật sự bật + thiết bị dùng được
+const CursorFX = lazy(() => import('./CursorFX.jsx'))
+const SeasonFX = lazy(() => import('./SeasonFX.jsx'))
 import { PostDetail, ProjectDetail, BlogList, BlogCard, blogPages, NotFoundPage } from './Detail.jsx'
 import { trackView } from './stats.js'
 import { HASH, href, navigate, usePath, idFromSlug, postPath, projectPath, blogPath } from './router.js'
 import { useSeo } from './seo.js'
-import CursorFX from './CursorFX.jsx'
 import Contact from './Contact.jsx'
 import { BrandLogo, brandOf, useFavicon } from './Brand.jsx'
 import HeroVisual, { mergeHero, hexA, Highlight } from './HeroVisual.jsx'
-import SeasonFX, { activeSeason } from './SeasonFX.jsx'
+import { activeSeason } from './seasonCfg.js'
 import { coverOf } from './autoArt.js'
+import { warmProject } from './prefetch.js'
 import { LangCtx, LANGS, chooseLang, useSiteLang, useT, localizeList, localizeSettings, heroFor } from './i18n.js'
 
 const grad = 'bg-gradient-to-r from-pink to-purple'
@@ -20,13 +23,21 @@ const label = 'text-[11px] font-bold tracking-[2px] text-pink'
 const h2 = 'mt-2.5 max-w-[680px] text-[clamp(28px,4.4vw,46px)] font-bold leading-[1.12] tracking-tight'
 const card = 'rounded-2xl border border-line bg-gradient-to-b from-[#171a2c] to-card transition duration-300 hover:-translate-y-1.5 hover:border-purple/60 hover:shadow-[0_20px_50px_#6650ff22]'
 
+// Một IntersectionObserver dùng chung cho mọi khối hiện dần (thay vì mỗi khối một cái)
+const revealCbs = new WeakMap()
+let revealIO
+const revealObserver = () => revealIO ||= new IntersectionObserver(es => {
+  for (const e of es) if (e.isIntersecting) { revealIO.unobserve(e.target); revealCbs.get(e.target)?.() }
+}, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' })
+
 function Reveal({ children, className = '', delay = 0 }) {
   const ref = useRef(null)
   const [shown, setShown] = useState(false)
   useEffect(() => {
-    const io = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setShown(true); io.disconnect() } }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' })
-    io.observe(ref.current)
-    return () => io.disconnect()
+    const el = ref.current, io = revealObserver()
+    revealCbs.set(el, () => setShown(true))
+    io.observe(el)
+    return () => { io.unobserve(el); revealCbs.delete(el) }
   }, [])
   return (
     <div ref={ref} style={{ transitionDelay: `${delay}ms` }}
@@ -38,59 +49,69 @@ function Reveal({ children, className = '', delay = 0 }) {
 
 /* ---------------- Cuộn mượt ---------------- */
 const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches
-let scrollAnim = 0
+// Dùng cuộn mượt có sẵn của trình duyệt (chạy ngoài luồng chính, tự dừng khi khách lăn chuột / chạm màn hình)
 export function smoothScrollTo(y) {
-  cancelAnimationFrame(scrollAnim)
-  const start = scrollY, dist = Math.max(0, y) - start
-  if (reduceMotion() || Math.abs(dist) < 2) return window.scrollTo(0, start + dist)
-  const dur = Math.min(1100, 450 + Math.abs(dist) * 0.3)
-  const ease = t => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2) // easeInOutCubic
-  let t0
-  const stop = () => { cancelAnimationFrame(scrollAnim); removeEventListener('wheel', stop); removeEventListener('touchstart', stop) }
-  addEventListener('wheel', stop, { passive: true }); addEventListener('touchstart', stop, { passive: true })
-  const step = ts => {
-    t0 ??= ts
-    const t = Math.min(1, (ts - t0) / dur)
-    window.scrollTo(0, start + dist * ease(t))
-    if (t < 1) scrollAnim = requestAnimationFrame(step); else stop()
-  }
-  scrollAnim = requestAnimationFrame(step)
+  window.scrollTo({ top: Math.max(0, y), behavior: reduceMotion() ? 'auto' : 'smooth' })
 }
 const sectionTop = el => (el.id === 'home' ? 0 : el.getBoundingClientRect().top + scrollY - 72)
 
-// Ghi trạng thái cuộn vào biến CSS (không re-render React): --sy, --progress, --draw, data-scrolled
+// Trình duyệt hỗ trợ scroll-driven animation (Chrome, Edge, Cốc Cốc, Safari mới…): parallax, thanh tiến độ và đường vẽ
+// chạy hoàn toàn bằng CSS (xem index.css), không còn mã JS nào chạy khi cuộn. Trình duyệt chưa hỗ trợ dùng bản JS bên dưới như trước.
+const CSS_SCROLL = typeof CSS !== 'undefined' && !!CSS.supports && CSS.supports('animation-timeline: scroll()')
+
+// data-scrolled (nền menu đậm lên khi cuộn khỏi đầu trang): IntersectionObserver canh một vạch 8px ở đầu trang,
+// chỉ chạy đúng lúc vạch đi vào / ra khỏi màn hình, không nghe sự kiện scroll.
+// Bản dự phòng JS (chỉ khi trình duyệt chưa hỗ trợ CSS ở trên): ghi --sy, --progress, --draw (không re-render React)
 function useScrollVars(deps) {
   useEffect(() => {
-    const root = document.documentElement; let raf = 0
-    const update = () => {
-      raf = 0
-      const y = scrollY, max = root.scrollHeight - innerHeight
-      root.style.setProperty('--sy', Math.min(y, 1400).toFixed(1))
-      root.style.setProperty('--progress', max > 0 ? (y / max).toFixed(4) : 0)
-      y > 8 ? root.setAttribute('data-scrolled', '') : root.removeAttribute('data-scrolled')
-      document.querySelectorAll('[data-draw]').forEach(el => {
-        const r = el.getBoundingClientRect()
-        const v = Math.min(1, Math.max(0, (innerHeight * 0.75 - r.top) / r.height))
-        el.style.setProperty('--draw', v.toFixed(3))
-      })
+    const root = document.documentElement
+    const mark = document.createElement('div')
+    mark.setAttribute('aria-hidden', 'true')
+    mark.style.cssText = 'position:absolute;top:0;left:0;width:1px;height:8px;pointer-events:none;visibility:hidden'
+    document.body.prepend(mark)
+    const io = new IntersectionObserver(([e]) => { e.isIntersecting ? root.removeAttribute('data-scrolled') : root.setAttribute('data-scrolled', '') })
+    io.observe(mark)
+    let raf = 0, onScroll = null
+    if (!CSS_SCROLL) {
+      let draws = []
+      const update = () => {
+        raf = 0
+        // Đọc hết rồi mới ghi: không bắt trình duyệt tính lại bố cục giữa chừng như trước
+        if (!draws.length || draws.some(el => !el.isConnected)) draws = [...document.querySelectorAll('[data-draw]')]
+        const y = scrollY, vh = innerHeight, max = root.scrollHeight - vh
+        const vals = draws.map(el => { const r = el.getBoundingClientRect(); return Math.min(1, Math.max(0, (vh * 0.75 - r.top) / r.height)) })
+        root.style.setProperty('--sy', Math.min(y, 1400).toFixed(1))
+        root.style.setProperty('--progress', max > 0 ? (y / max).toFixed(4) : 0)
+        draws.forEach((el, i) => el.style.setProperty('--draw', vals[i].toFixed(3)))
+      }
+      onScroll = () => { if (!raf) raf = requestAnimationFrame(update) }
+      addEventListener('scroll', onScroll, { passive: true }); addEventListener('resize', onScroll)
+      update()
     }
-    const onScroll = () => { if (!raf) raf = requestAnimationFrame(update) }
-    addEventListener('scroll', onScroll, { passive: true }); addEventListener('resize', onScroll)
-    update()
-    return () => { removeEventListener('scroll', onScroll); removeEventListener('resize', onScroll); cancelAnimationFrame(raf) }
+    return () => {
+      io.disconnect(); mark.remove(); cancelAnimationFrame(raf)
+      if (onScroll) { removeEventListener('scroll', onScroll); removeEventListener('resize', onScroll) }
+    }
   }, deps)
 }
 
 // Mục đang xem = mục cuối cùng có mép trên đã đi qua thanh menu.
 // Khi bấm link trên menu: tô sáng ngay mục được bấm và giữ nguyên trong lúc trang đang cuộn tới,
 // tránh việc tô nhầm các mục nằm giữa (VD bấm Experience khi đang ở Work).
+// Trước đây đọc vị trí mọi mục ở MỖI sự kiện scroll; nay dùng IntersectionObserver: chỉ tính lại khi một mép mục đi qua thanh menu.
 function useActive(ids) {
   const [active, setActive] = useState(ids[0])
   const lock = useRef(0)
+  const recalc = useRef(null)
+  const unlock = useRef(0)
   const key = ids.join()
-  const pick = id => { setActive(id); lock.current = Date.now() + 1500 }
+  const pick = id => {
+    setActive(id); lock.current = Date.now() + 1500
+    // mở khóa khi trình duyệt báo cuộn xong (scrollend); không có sự kiện đó thì mở sau 1,6 giây
+    clearTimeout(unlock.current)
+    unlock.current = setTimeout(() => { lock.current = 0; recalc.current?.() }, 1600)
+  }
   useEffect(() => {
-    let timer
     const calc = () => {
       if (Date.now() < lock.current) return
       let a = ids[0]
@@ -107,15 +128,35 @@ function useActive(ids) {
       }
       setActive(a)
     }
-    const onScroll = () => { calc(); clearTimeout(timer); timer = setTimeout(() => { lock.current = 0; calc() }, 160) }
+    recalc.current = calc
+    // Dải ngang cao 1px nằm đúng mốc 140px tính từ đầu cửa sổ: mục nào cắt qua dải này sẽ kích hoạt tính lại
+    let io, rt
+    const watch = () => {
+      io?.disconnect()
+      io = new IntersectionObserver(calc, { rootMargin: `-140px 0px -${Math.max(0, innerHeight - 141)}px 0px` })
+      for (const id of ids) { const el = document.getElementById(id); if (el) io.observe(el) }
+    }
+    watch()
+    // Đáy trang: một vạch 4px không chiếm chỗ ở cuối trang báo khi khách cuộn tới sát đáy
+    const end = document.createElement('div')
+    end.setAttribute('aria-hidden', 'true')
+    end.style.cssText = 'height:4px;margin-top:-4px;pointer-events:none;visibility:hidden'
+    document.body.append(end)
+    const ioEnd = new IntersectionObserver(calc); ioEnd.observe(end)
+    const onScrollEnd = () => { clearTimeout(unlock.current); lock.current = 0; calc() }
+    const onResize = () => { clearTimeout(rt); rt = setTimeout(() => { watch(); calc() }, 150) }
     const onHash = () => {
       const id = location.hash.slice(1)
       if (ids.includes(id)) pick(id)
     }
-    addEventListener('scroll', onScroll, { passive: true })
+    addEventListener('scrollend', onScrollEnd)
+    addEventListener('resize', onResize)
     addEventListener('hashchange', onHash)
     calc()
-    return () => { removeEventListener('scroll', onScroll); removeEventListener('hashchange', onHash); clearTimeout(timer) }
+    return () => {
+      io?.disconnect(); ioEnd.disconnect(); end.remove(); clearTimeout(rt); clearTimeout(unlock.current)
+      removeEventListener('scrollend', onScrollEnd); removeEventListener('resize', onResize); removeEventListener('hashchange', onHash)
+    }
   }, [key])
   return [active, pick]
 }
@@ -140,7 +181,7 @@ function Navbar({ off, forced, langSwitch, brand }) {
   const [spy, pick] = useActive(shown.map(l => l[0]))
   const active = forced || spy
   return (
-    <nav className="site-nav sticky top-[env(safe-area-inset-top,0px)] z-50 h-[72px] border-b border-line bg-[#0a0c14]/70 backdrop-blur-xl">
+    <nav className="site-nav sticky top-[env(safe-area-inset-top,0px)] z-50 h-[72px] border-b border-line bg-[#0a0c14]/90">
       <i aria-hidden className={`scroll-progress pointer-events-none absolute inset-x-0 -bottom-px h-[2px] ${grad}`} />
       <div className="mx-auto flex h-full w-[min(1180px,100%-32px)] items-center justify-between sm:w-[min(1180px,100%-48px)]">
         <a href="#home" className="text-xl font-extrabold tracking-tight"><BrandLogo brand={brand} /></a>
@@ -151,7 +192,7 @@ function Navbar({ off, forced, langSwitch, brand }) {
           <i className={`block h-0.5 w-[18px] rounded bg-white transition ${open ? 'opacity-0' : ''}`} />
           <i className={`block h-0.5 w-[18px] rounded bg-white transition ${open ? '-translate-y-[7px] -rotate-45' : ''}`} />
         </button>
-        <div className={`absolute inset-x-0 top-[72px] flex flex-col gap-1 border-b border-line bg-[#0a0c14]/95 p-4 backdrop-blur-xl transition md:static md:ml-auto md:flex-row md:items-center md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none
+        <div className={`absolute inset-x-0 top-[72px] flex flex-col gap-1 border-b border-line bg-[#0a0c14]/95 p-4 transition md:static md:ml-auto md:flex-row md:items-center md:border-0 md:bg-transparent md:p-0
           ${open ? 'visible translate-y-0 opacity-100' : 'invisible -translate-y-3 opacity-0 md:visible md:translate-y-0 md:opacity-100'}`}>
           {shown.map(([id]) => (
             <a key={id} href={`#${id}`} onClick={() => { pick(id); setOpen(false) }}
@@ -171,7 +212,7 @@ function Hero({ off, hero: h, cv }) {
     <header id="home" className="mx-auto flex w-[min(1180px,100%-32px)] flex-col-reverse items-center justify-between gap-14 py-12 text-center sm:w-[min(1180px,100%-48px)] md:min-h-[calc(100svh-72px)] md:flex-row md:gap-16 md:py-[70px] md:text-left">
       <div className="parallax-slow max-w-[620px]">
         {!off('sec_hero_badge') && h.badge.text && <span style={{ animationDelay: '.05s', background: h.badge.bg, color: h.badge.color }} className="hero-in inline-flex items-center gap-2 rounded-md px-3 py-[7px] text-[11px] font-bold tracking-[2px]">
-          <i className="size-[7px] animate-ping-soft rounded-full" style={{ background: h.badge.dot, boxShadow: `0 0 0 0 ${hexA(h.badge.dot, .55)}` }} /> {h.badge.text}
+          <i className="ping-dot size-[7px] rounded-full" style={{ background: h.badge.dot }} /> {h.badge.text}
         </span>}
         <h1 style={{ animationDelay: '.15s' }} className="hero-in my-[22px] text-[clamp(38px,6.4vw,76px)] font-bold leading-[1.05] tracking-[-0.035em]">
           {h.title.before}<Highlight title={h.title} />{h.title.after}
@@ -202,17 +243,27 @@ export function Marquee({ hero }) {
   // lặp đủ dài để dải chữ luôn phủ kín màn hình rồi nhân đôi cho vòng chạy liền mạch
   const base = Array.from({ length: Math.max(1, Math.ceil(8 / list.length)) }, () => list).flat()
   const items = [...base, ...base]
+  const box = useRef(null), track = useRef(null)
+  // Dải chữ ra khỏi màn hình thì tạm dừng animation
+  useEffect(() => {
+    const io = new IntersectionObserver(([e]) => { track.current.style.animationPlayState = e.isIntersecting ? 'running' : 'paused' })
+    io.observe(box.current)
+    return () => io.disconnect()
+  }, [list.length])
   return (
-    <div aria-hidden className="overflow-hidden border-y border-line py-[18px]" style={{ background: m.bg }}>
-      <div className="flex w-max animate-marquee gap-12" style={{ animationDuration: `${Math.max(6, Number(m.speed) || 28)}s` }}>
+    <div ref={box} aria-hidden className="overflow-hidden border-y border-line py-[18px]" style={{ background: m.bg }}>
+      <div ref={track} className="flex w-max animate-marquee gap-12" style={{ animationDuration: `${Math.max(6, Number(m.speed) || 28)}s` }}>
         {items.map((t, i) => <span key={i} className="flex items-center gap-12 whitespace-nowrap text-lg font-bold tracking-wider" style={{ color: m.text_color }}>{t}{m.separator && <b style={{ color: m.sep_color }}>{m.separator}</b>}</span>)}
       </div>
     </div>
   )
 }
 
+// Các mục phía dưới: trình duyệt bỏ qua dàn trang/vẽ cho tới khi cuộn gần tới (xem .cv-lazy trong index.css)
+const LAZY = new Set(['experience', 'work', 'blog'])
+
 const Section = ({ id, lab, title, intro, children }) => (
-  <section id={id} className="py-[clamp(64px,10vw,110px)]">
+  <section id={id} className={`py-[clamp(64px,10vw,110px)] ${LAZY.has(id) ? 'cv-lazy' : ''}`}>
     <div className="mx-auto w-[min(1180px,100%-32px)] sm:w-[min(1180px,100%-48px)]">
       <Reveal><div className={label}>{lab}</div><h2 className={h2}>{title}</h2>{intro && <p className="mt-3.5 max-w-[560px] text-muted">{intro}</p>}</Reveal>
       {children}
@@ -231,7 +282,7 @@ function Footer({ settings: s, links, socials, off, cv }) {
   const tel = (s.phone || '').replace(/[^\d+]/g, '')
   const isExt = u => /^https?:/i.test(u)
   return (
-    <footer className="border-t border-line bg-[#06070d]">
+    <footer className="cv-lazy cv-foot border-t border-line bg-[#06070d]">
       <div className="mx-auto w-[min(1180px,100%-32px)] sm:w-[min(1180px,100%-48px)]">
         <div className="grid gap-10 py-14 sm:grid-cols-2 lg:flex lg:justify-between lg:gap-12 [&:empty]:hidden">
           {!off('sec_footer_about') && <div className="lg:max-w-[300px]">
@@ -239,7 +290,7 @@ function Footer({ settings: s, links, socials, off, cv }) {
             {s.footer_tagline && <p className="mt-3 max-w-xs text-sm leading-relaxed text-muted">{s.footer_tagline}</p>}
             {s.availability && (
               <span className="mt-4 inline-flex items-center gap-2 rounded-full border border-line bg-white/5 px-3 py-1.5 text-xs text-[#c9cbd8]">
-                <i className="size-[7px] animate-ping-soft rounded-full bg-[#3ddc97]" />{s.availability}
+                <i className="ping-dot size-[7px] rounded-full bg-[#3ddc97]" />{s.availability}
               </span>
             )}
             {cv && <a href={cv} target="_blank" rel="noreferrer" download="CongMinh-CV.pdf" className={`${grad} mt-5 block w-fit rounded-xl px-5 py-2.5 text-sm font-semibold`}>{t('foot.cv')}</a>}
@@ -282,6 +333,19 @@ function Footer({ settings: s, links, socials, off, cv }) {
     </footer>
   )
 }
+
+function Late({ children }) {
+  const [on, setOn] = useState(false)
+  useEffect(() => {
+    if (!('requestIdleCallback' in window)) { const id = setTimeout(() => setOn(true), 800); return () => clearTimeout(id) }
+    const id = requestIdleCallback(() => setOn(true), { timeout: 2500 })
+    return () => cancelIdleCallback(id)
+  }, [])
+  return on ? <Suspense fallback={null}>{children}</Suspense> : null
+}
+// Điện thoại / máy cảm ứng và máy bật "giảm chuyển động" không chạy hiệu ứng → khỏi tải mã của chúng
+const calm = () => matchMedia('(prefers-reduced-motion: reduce)').matches
+const cursorOn = v => !!v && v !== 'none' && v !== 'none+none' && !matchMedia('(pointer: coarse)').matches && !calm()
 
 function Site({ path }) {
   const raw = useContent()
@@ -433,11 +497,11 @@ function SiteBody({ path, raw, lang }) {
 
         {!off('sec_work') && <Section id="work" lab={t('work.label')} title={t('work.title')}>
           <div className="mt-10 grid gap-6 md:grid-cols-2">
-            {projects.map((p, i) => (
+            {projects.map((p, i) => { const cover = coverOf(p, 'project'); return (
               <Reveal key={p.id} delay={(i % 2) * 80}>
-                <article data-cursor-label={t('cursor.view')} className={`${card} group h-full p-5`}>
+                <article data-cursor-label={t('cursor.view')} {...warmProject(cover)} className={`${card} group h-full p-5`}>
                   <a href={href(projectPath(p))} className="relative mb-[22px] block aspect-[1200/630] overflow-hidden rounded-xl bg-[#0b0d16]" tabIndex={-1} aria-hidden>
-                    <img src={coverOf(p, 'project')} alt="" loading="lazy" className="size-full object-cover transition duration-700 group-hover:scale-[1.06]" />
+                    <img src={cover} alt="" width="1200" height="630" loading="lazy" decoding="async" className="size-full object-cover transition duration-700 group-hover:scale-[1.06]" />
                   </a>
                   <div className={label}>{p.category}</div>
                   <h3 className="mb-2 mt-1.5 text-[22px] font-semibold"><a href={href(projectPath(p))} className="block transition hover:text-pink">{p.title}</a></h3>
@@ -445,7 +509,7 @@ function SiteBody({ path, raw, lang }) {
                   <a href={href(projectPath(p))} className="inline-flex items-center gap-1.5 text-[13px] font-semibold">{t('work.more')} <span className="transition group-hover:translate-x-1.5">→</span></a>
                 </article>
               </Reveal>
-            ))}
+            )})}
           </div>
         </Section>}
 
@@ -470,8 +534,10 @@ function SiteBody({ path, raw, lang }) {
       </main>
       )}
       <Footer settings={settings} links={fLinks} socials={socials} off={off} cv={cvUrl} />
-      <CursorFX effect={settings.cursor_effect} />
-      <SeasonFX effect={activeSeason(hero.season)} amount={hero.season.amount} />
+      {(cursorOn(settings.cursor_effect) || (activeSeason(hero.season) && !calm())) && <Late>
+        {cursorOn(settings.cursor_effect) && <CursorFX effect={settings.cursor_effect} />}
+        {activeSeason(hero.season) && <SeasonFX effect={activeSeason(hero.season)} amount={hero.season.amount} />}
+      </Late>}
     </>
   )
 }

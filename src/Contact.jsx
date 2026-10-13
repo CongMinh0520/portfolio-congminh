@@ -1,7 +1,7 @@
 // Khối Liên hệ cuối trang chủ: thông tin liên hệ + form gửi tin nhắn (có Cloudflare Turnstile chống spam).
 // Tin nhắn được lưu và xem trong Admin → Tin nhắn.
 import { useEffect, useRef, useState } from 'react'
-import { supabase, demoMode } from './supabase.js'
+import { demoMode, insertRow } from './api.js'
 import { useT } from './i18n.js'
 
 const SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || ''
@@ -72,7 +72,7 @@ export default function Contact({ settings: s, socials = [] }) {
       const payload = { name: f.name.trim(), email: f.email.trim(), message: f.message.trim(), website: f.website, page: location.href }
       if (demoMode) {
         if (!payload.website) {
-          const { error } = await supabase.from('messages').insert({ ...payload, website: undefined, created_at: new Date().toISOString(), read: false, user_agent: navigator.userAgent.slice(0, 300) })
+          const { error } = await insertRow('messages', { ...payload, website: undefined, created_at: new Date().toISOString(), read: false, user_agent: navigator.userAgent.slice(0, 300) })
           if (error) throw new Error(error.message)
         }
       } else {

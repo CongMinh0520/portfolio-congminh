@@ -2,7 +2,9 @@
 // - Không lưu IP, không cookie quảng cáo. "Người xem" = một mã ngẫu nhiên lưu trong trình duyệt khách.
 // - Không đếm: trình duyệt đã đăng nhập Admin, bot, trình duyệt tự động; tải lại cùng trang trong 30 phút chỉ tính 1 lần.
 // - Gửi sau khi trang đã hiện (lúc trình duyệt rảnh) để không làm chậm trang.
-import { supabase, demoMode } from './supabase.js'
+import { demoMode, insertRow } from './api.js'
+// supabase-js chỉ nạp khi mở Admin (xem loadStats)
+const sb = () => import('./supabase.js').then(m => m.supabase)
 
 const NO_TRACK = 'cm-no-track', VID = 'cm-vid', SEEN = 'cm-seen', ENTRY = 'cm-entry'
 const ls = { get: k => { try { return localStorage.getItem(k) } catch { return null } }, set: (k, v) => { try { localStorage.setItem(k, v) } catch {} } }
@@ -47,14 +49,14 @@ export function trackView({ kind, ref_id = null, path = '/', lang = 'vi' }) {
     // Nguồn khách chỉ ghi ở trang đầu tiên của lượt ghé thăm
     const first = !ss.get(ENTRY); if (first) ss.set(ENTRY, '1')
     const row = { kind, ref_id, path: String(path).slice(0, 300), source: first ? sourceOf() : null, device: deviceOf(), lang: lang === 'en' ? 'en' : 'vi', visitor: vid }
-    const send = () => supabase.from('page_views').insert(row).then(() => {}, () => {})
+    const send = () => insertRow('page_views', row).then(() => {}, () => {})
     if ('requestIdleCallback' in window) requestIdleCallback(send, { timeout: 4000 }); else setTimeout(send, 1500)
   } catch { /* đếm lỗi thì bỏ qua, không ảnh hưởng trang */ }
 }
 
 /** Số liệu cho dashboard (Admin). Bản demo trả thêm sample: true */
 export async function loadStats(days) {
-  const { data, error } = await supabase.rpc('view_stats', { days })
+  const { data, error } = await (await sb()).rpc('view_stats', { days })
   if (error) throw error
   return { sample: demoMode, ...data }
 }
