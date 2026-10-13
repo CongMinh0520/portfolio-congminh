@@ -1,6 +1,6 @@
 // Hằng số của trang (mục, màu nền thẻ) và cài đặt mẫu. Nhỏ, dùng cả ở trang chủ lẫn Admin.
 // Nội dung mẫu dài (bài viết, dự án…) nằm ở data.js và chỉ tải khi cần.
-export const links = [['home','Home'],['skills','Skills'],['experience','Experience'],['work','Work'],['blog','Blog']]
+export const links = [['home','Home'],['skills','Skills'],['experience','Experience'],['work','Work'],['bugs','Bugs'],['blog','Blog']]
 // Các phần trên trang chủ có thể ẩn/hiện trong Admin → Bố cục trang chủ (lưu chung cột settings.hidden)
 export const SECTIONS = [
   ['Đầu trang', 'Menu trên cùng và phần mở đầu', [
@@ -15,6 +15,7 @@ export const SECTIONS = [
     ['sec_skills', 'Mục Kỹ năng'],
     ['sec_experience', 'Mục Kinh nghiệm'],
     ['sec_work', 'Mục Dự án'],
+    ['sec_bugs', 'Mục Bug mẫu (tự ẩn khi chưa có bug nào đang hiển thị)'],
     ['sec_blog', 'Mục Blog'],
     ['sec_contact', 'Khối Liên hệ cuối trang'] ]],
   ['Footer', 'Chân trang', [
@@ -25,7 +26,7 @@ export const SECTIONS = [
     ['sec_footer_socials', 'Cột Kết nối (mạng xã hội)'],
     ['sec_footer_bottom', 'Dòng bản quyền'] ]],
 ]
-export const SECTION_OF = { skills: 'sec_skills', experience: 'sec_experience', work: 'sec_work', blog: 'sec_blog', contact: 'sec_contact' }
+export const SECTION_OF = { skills: 'sec_skills', experience: 'sec_experience', work: 'sec_work', bugs: 'sec_bugs', blog: 'sec_blog', contact: 'sec_contact' }
 
 export const marquee = ['MANUAL TESTING','TEST CASE','API TESTING','MOBILE APP','BLOCKCHAIN WALLET','BUG TRACKING']
 export const meta = [['2','Năm kinh nghiệm QA'],['4','Lĩnh vực đã test'],['Web · App','Nền tảng']]

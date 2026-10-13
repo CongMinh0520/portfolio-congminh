@@ -37,6 +37,18 @@
       "destination": "/api/page?type=project&slug=:slug"
     },
     {
+      "source": "/bug/:slug",
+      "destination": "/api/page?type=bug&slug=:slug"
+    },
+    {
+      "source": "/rss.xml",
+      "destination": "/api/rss"
+    },
+    {
+      "source": "/rss-en.xml",
+      "destination": "/api/rss?lang=en"
+    },
+    {
       "source": "/((?!assets/|api/).*)",
       "destination": "/app.html"
     }

@@ -103,3 +103,19 @@ html[data-scrolled] .site-nav { background-color: #0a0c14e8; box-shadow: 0 12px 
   #blog.cv-lazy { contain-intrinsic-size: auto 1750px; }
   .cv-foot { contain-intrinsic-size: auto 830px; }
 }
+#bugs.cv-lazy { contain-intrinsic-size: auto 560px; }
+@media (max-width: 767px) { #bugs.cv-lazy { contain-intrinsic-size: auto 900px; } }
+
+/* ----- In CV (/cv): chỉ in tờ CV, nền trắng, khổ A4 ----- */
+@page { size: A4; margin: 12mm 14mm; }
+.cv-paper { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+@media print {
+  html { color-scheme: light; }
+  html, body { background: #fff !important; }
+  body::before { display: none; }
+  .no-print { display: none !important; }
+  .cv-page { padding: 0 !important; min-height: 0 !important; }
+  .cv-paper { width: auto !important; box-shadow: none !important; border-radius: 0 !important; padding: 0 !important; }
+  .cv-item { break-inside: avoid; }
+  .cv-sec h2 { break-after: avoid; }
+}

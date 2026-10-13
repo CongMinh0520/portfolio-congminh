@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 import { HASH } from './router.js'
 
-const SITE = 'Công Minh'
+export const SITE = 'Công Minh'
 const setMeta = (attr, key, content) => {
   let el = document.head.querySelector(`meta[${attr}="${key}"]`)
   if (!content) { el?.remove(); return }

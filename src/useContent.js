@@ -3,7 +3,7 @@ import { configured, rpcHome, selectTable, selectSettings } from './api.js'
 import { DEMO_SETTINGS } from './siteBase.js'
 import { sortPosts } from './postStatus.js'
 
-export const LIST_TABLES = ['skills', 'jobs', 'projects', 'posts', 'footer_links', 'socials']
+export const LIST_TABLES = ['skills', 'jobs', 'projects', 'posts', 'bugs', 'footer_links', 'socials']
 
 // Admin (và chế độ demo) dùng client supabase-js; nạp muộn để trang công khai không phải tải thư viện này
 const client = () => import('./supabase.js').then(m => m.supabase)

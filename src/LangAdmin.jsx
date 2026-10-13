@@ -128,6 +128,7 @@ export default function LangPage({ toast, go }) {
     ['projects', 'Dự án', stats?.projects?.done, stats?.projects?.total, '{done}/{total} mục đã dịch'],
     ['footer_links', 'Menu footer', stats?.footer_links?.done, stats?.footer_links?.total, '{done}/{total} mục đã dịch'],
     ['posts', 'Blog', stats?.posts?.done, stats?.posts?.total, '{done}/{total} bài đã dịch'],
+    ['bugs', 'Bug mẫu', stats?.bugs?.done, stats?.bugs?.total, '{done}/{total} mục đã dịch'],
     ['settings', 'Thông tin chung + khối cuối bài', setAll - setMiss, setAll, '{done}/{total} ô đã dịch'],
   ]
   const def = row.lang_default === 'en' ? 'en' : 'vi', sw = row.lang_switch !== false

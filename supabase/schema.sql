@@ -229,7 +229,7 @@ alter table public.posts add column if not exists canonical_source boolean not n
 create table if not exists public.page_views (
   id bigint generated always as identity primary key,
   created_at timestamptz not null default now(),
-  kind text not null default 'home' check (kind in ('home', 'blog', 'post', 'project', 'notfound')),
+  kind text not null default 'home' check (kind in ('home', 'blog', 'post', 'project', 'notfound', 'bug', 'cv', 'selftest')),
   ref_id bigint,
   path text not null default '/' check (char_length(path) <= 300),
   source text check (char_length(source) <= 80),
@@ -315,7 +315,7 @@ declare
   ident boolean;
 begin
   if auth.uid() is null then raise exception 'not allowed'; end if;
-  if tbl not in ('settings', 'admin_settings', 'posts', 'projects', 'skills', 'jobs', 'footer_links', 'socials', 'messages') then
+  if tbl not in ('settings', 'admin_settings', 'posts', 'projects', 'skills', 'jobs', 'footer_links', 'socials', 'messages', 'bugs') then
     raise exception 'table % is not restorable', tbl;
   end if;
   if jsonb_typeof(rows) <> 'array' then raise exception 'rows must be an array'; end if;
@@ -361,6 +361,9 @@ create table if not exists public.push_subscriptions (
 alter table public.push_subscriptions enable row level security;
 drop policy if exists "admin all" on public.push_subscriptions;
 create policy "admin all" on public.push_subscriptions for all to authenticated using (true) with check (true);
+
+-- ===== Bug mẫu, trang Kiểm thử, CV online =====
+-- Bảng bugs, cột settings.selftest, hàm get_home và 3 bug mẫu nằm ở supabase/migration-qa.sql: cài mới thì chạy thêm file đó sau file này.
 
 -- ===== Nội dung mẫu (Manual QA Tester) — chỉ dùng khi cài mới; sửa / xóa trong Admin =====
 insert into public.skills (sort, icon, title, description, tags, en) values

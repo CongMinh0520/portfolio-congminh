@@ -157,7 +157,7 @@ export function blogPages(posts, tag) {
 }
 
 export function BlogList({ posts, tag, pageNo = 1 }) {
-  const { t } = useT()
+  const { t, lang } = useT()
   const allTags = useMemo(() => {
     const c = {}; posts.forEach(p => tagsOf(p).forEach(t => { c[t] = (c[t] || 0) + 1 }))
     return Object.entries(c).sort((a, b) => b[1] - a[1])
@@ -171,7 +171,7 @@ export function BlogList({ posts, tag, pageNo = 1 }) {
       <a href={href('/#blog')} className="text-sm text-muted transition hover:text-white">{t('post.home')}</a>
       <p className="mt-8 text-[11px] font-bold tracking-[2px] text-pink">BLOG</p>
       <h1 className="mt-3 text-[clamp(32px,5vw,52px)] font-bold leading-[1.1] tracking-tight">{t('post.allTitle')}</h1>
-      <p className="mt-3 text-muted">{t('post.count', { n: posts.length })}</p>
+      <p className="mt-3 text-muted">{t('post.count', { n: posts.length })} <a href={lang === 'en' ? '/rss-en.xml' : '/rss.xml'} className="whitespace-nowrap text-sm font-semibold text-[#ffb27f] underline decoration-[#ffb27f]/40 underline-offset-4 transition hover:decoration-[#ffb27f]">{t('rss.follow')}</a></p>
       {allTags.length > 0 && (
         <div className="mt-8 flex flex-wrap gap-2">
           <a href={href('/blog')} className={chip(!tag)}>{t('post.allTag')} <span className="text-xs text-muted">{posts.length}</span></a>

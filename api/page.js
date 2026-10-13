@@ -1,6 +1,6 @@
 // Trang chi tiết bài Blog / Dự án: chèn sẵn tiêu đề, mô tả, ảnh chia sẻ vào HTML
 // để Facebook, Zalo, Google đọc được ngay mà không cần chạy JavaScript. Giao diện vẫn là trang React như cũ.
-import { rest, originOf, postPath, projectPath, idFromSlug, esc, SITE_NAME, homeInfo } from './_lib.js'
+import { rest, originOf, postPath, projectPath, bugPath, idFromSlug, esc, SITE_NAME, homeInfo } from './_lib.js'
 
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -46,6 +46,10 @@ export async function GET(request) {
   } else if (type === 'project' && id) {
     const [p] = (await rest(`projects?select=id,title,description,image,category&id=eq.${id}&visible=eq.true`)) || []
     if (p) meta = { title: `${p.title} — ${SITE_NAME}`, ogTitle: p.title, desc: plain(p.description), type: 'website', image: ogImage(origin, p.image, p.title, p.category || 'Dự án'), canonical: origin + projectPath(p) }
+    else status = 404
+  } else if (type === 'bug' && id) {
+    const [b] = (await rest(`bugs?select=id,title,product,actual,image&id=eq.${id}&visible=eq.true`)) || []
+    if (b) meta = { title: `${b.title} — ${SITE_NAME}`, ogTitle: b.title, desc: plain([b.product, b.actual].filter(Boolean).join(' — ')), type: 'article', image: ogImage(origin, b.image, b.title, 'Bug report'), canonical: origin + bugPath(b) }
     else status = 404
   }
 
