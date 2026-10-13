@@ -1,6 +1,7 @@
 // Trang chi tiết bài Blog / Dự án: chèn sẵn tiêu đề, mô tả, ảnh chia sẻ vào HTML
 // để Facebook, Zalo, Google đọc được ngay mà không cần chạy JavaScript. Giao diện vẫn là trang React như cũ.
-import { rest, originOf, postPath, projectPath, bugPath, idFromSlug, esc, SITE_NAME, homeInfo } from './_lib.js'
+// Mọi trang đi qua hàm này (kể cả type=static: /blog, /cv, /kiem-thu) đều được nhúng sẵn dữ liệu trang chủ.
+import { rest, homeData, originOf, postPath, projectPath, bugPath, idFromSlug, esc, SITE_NAME, homeInfo } from './_lib.js'
 
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -23,13 +24,16 @@ export async function GET(request) {
   const origin = originOf(request)
   const q = new URL(request.url).searchParams
   const type = q.get('type'), id = idFromSlug(q.get('slug'))
+  // Dữ liệu trang chủ tải song song, nhúng sẵn vào HTML: trình duyệt vẽ trang ngay, không phải chờ gọi Supabase
+  const dataP = homeData()
   let html = await loadShell(origin)
   let meta = null, status = 200
 
   if (type === 'home') {
     // Trang chủ: tiêu đề, mô tả, ảnh chia sẻ lấy từ phần Đầu trang (Admin) — đổi trong Admin là link chia sẻ đổi theo
-    const [st] = (await rest('settings?select=hero,lang_default,footer_tagline,en&id=eq.1')) || []
-    const socials = (await rest('socials?select=url&visible=eq.true&order=sort.asc')) || []
+    const data = await dataP
+    const [st] = data ? [data.settings] : (await rest('settings?select=hero,lang_default,footer_tagline,en&id=eq.1')) || []
+    const socials = data ? (data.socials || []).filter(x => x.visible !== false) : (await rest('socials?select=url&visible=eq.true&order=sort.asc')) || []
     const home = homeInfo(st)
     meta = { title: `${SITE_NAME} — Manual QA Tester`, ogTitle: home.title || `${SITE_NAME} — Manual QA Tester`, desc: plain(home.lead || st?.footer_tagline || ''), type: 'website',
       image: `${origin}/api/og?${new URLSearchParams({ home: '1', v: home.v })}`, canonical: origin + '/', locale: home.lang === 'en' ? 'en_US' : 'vi_VN',
@@ -78,5 +82,8 @@ export async function GET(request) {
     ].filter(Boolean).join('\n')
     html = html.replace(/<\/head>/i, `${tags}\n</head>`)
   }
+  // Nhúng dữ liệu (src/useContent.js đọc thẻ này). Trình duyệt vẫn tự tải bản mới ở nền nên sửa trong Admin vẫn hiện ra.
+  const data = await dataP
+  if (data) html = html.replace(/<\/body>/i, `<script id="cm-data" type="application/json">${JSON.stringify(data).replace(/</g, '\\u003c')}</script>\n</body>`)
   return new Response(html, { status, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=86400' } })
 }

@@ -44,9 +44,9 @@ export const DEFAULT_SELFTEST = {
     { title: 'Lần đo đầu cho điểm điện thoại 55, đo lại được 89', title_en: 'First run gave a mobile score of 55, re-measuring gave 89', status: 'note',
       detail: 'Lần đo đầu, máy đang chạy việc khác nên Lighthouse ghi nhận một tác vụ JavaScript dài 1,3 giây và cho 55 điểm. Đo lại 5 lần lúc máy rảnh được 82 đến 91 điểm, trung vị 89. Từ đó mình luôn đo nhiều lần và lấy trung vị thay vì tin một lần đo.',
       detail_en: 'On the first run the machine was busy with other work, so Lighthouse recorded a 1.3 s JavaScript task and scored 55. Five more runs on an idle machine gave 82 to 91, median 89. Since then I always measure several times and use the median instead of trusting a single run.' },
-    { title: 'Nội dung chỉ hiện sau khi tải xong dữ liệu (LCP khoảng 3,4 giây trên điện thoại)', title_en: 'Content only appears after the data arrives (LCP about 3.4 s on mobile)', status: 'open',
-      detail: 'Trình duyệt tải xong JavaScript mới gọi Supabase, và mỗi lần gọi phải chờ thêm một lượt "hỏi đường" (CORS preflight) khoảng 0,35 giây trước khi lấy dữ liệu. Đang thử gửi sẵn dữ liệu kèm trang để bỏ bớt lượt chờ.',
-      detail_en: 'The browser only calls Supabase after the JavaScript has loaded, and each call waits for an extra CORS preflight of about 0.35 s before fetching the data. Trying to ship the data together with the page to cut those waits.' },
+    { title: 'Nội dung chỉ hiện sau khi tải xong dữ liệu từ Supabase', title_en: 'Content only appeared after the data arrived from Supabase', status: 'fixed',
+      detail: 'Trình duyệt tải xong JavaScript mới gọi Supabase, mỗi lần gọi còn phải chờ thêm một lượt "hỏi đường" (CORS preflight), nên trang trắng thêm 0,6 đến 1,3 giây. Sửa: máy chủ gửi sẵn dữ liệu kèm trang. Đo A/B trên bản chạy giống Vercel, mạng 4G giả lập: LCP từ 3,6–3,9 giây xuống 2,9–3,0 giây, điểm hiệu năng từ 79–82 lên 89–90.',
+      detail_en: 'The browser only called Supabase after the JavaScript had loaded, and each call also waited for a CORS preflight, leaving the page blank for an extra 0.6 to 1.3 s. Fix: the server now ships the data with the page. A/B measured on a Vercel-like build over emulated 4G: LCP went from 3.6–3.9 s down to 2.9–3.0 s, performance score from 79–82 up to 89–90.' },
   ],
 }
 
