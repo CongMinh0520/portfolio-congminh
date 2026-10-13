@@ -176,6 +176,8 @@ export default {
   'Đang đăng nhập…': 'Logging in…',
   'Đăng nhập': 'Log in',
   'Về trang chủ': 'Back to site',
+  'Nhập email hợp lệ.': 'Enter a valid email.',
+  'Nhập mật khẩu.': 'Enter your password.',
 
   // Tổng quan
   '{n} mục đang ẩn': 'Hidden items: {n}',

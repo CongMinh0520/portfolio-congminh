@@ -38,15 +38,15 @@
     },
     {
       "source": "/blog",
-      "destination": "/api/page?type=static"
+      "destination": "/api/page?type=static&page=blog"
     },
     {
       "source": "/cv",
-      "destination": "/api/page?type=static"
+      "destination": "/api/page?type=static&page=cv"
     },
     {
       "source": "/kiem-thu",
-      "destination": "/api/page?type=static"
+      "destination": "/api/page?type=static&page=kiem-thu"
     },
     {
       "source": "/bug/:slug",

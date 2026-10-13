@@ -38,7 +38,7 @@ export function BugCard({ b }) {
       <BugBadges b={b} />
       <h3 className="mb-2 mt-4 text-[19px] font-semibold leading-snug"><a href={link} className="block transition hover:text-pink">{b.title}</a></h3>
       {b.product && <p className="text-[14px] text-muted">{b.product}</p>}
-      <a href={link} className="mt-auto inline-flex items-center gap-1.5 pt-4 text-[13px] font-semibold">{t('bugs.open')} <span className="transition group-hover:translate-x-1.5">→</span></a>
+      <a href={link} className="mt-auto inline-flex min-h-6 items-center gap-1.5 pt-4 text-[13px] font-semibold">{t('bugs.open')} <span className="transition group-hover:translate-x-1.5">→</span></a>
     </article>
   )
 }

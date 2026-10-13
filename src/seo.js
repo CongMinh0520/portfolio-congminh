@@ -23,18 +23,25 @@ const setLinkOpt = (rel, url) => {
 }
 const absolute = u => { try { return u && !u.startsWith('data:') ? new URL(u, location.origin).href : '' } catch { return '' } }
 
-export function useSeo({ title, description = '', image = '', type = 'website', published, modified, path, prev, next, noindex, canonical } = {}) {
+/** Ảnh chia sẻ tự tạo (giống api/page.js): dùng khi bài không có ảnh bìa dạng link (ảnh data: không chia sẻ được) */
+const ogCard = (title, kind, date) => HASH ? '' : new URL(`/api/og?${title
+  ? new URLSearchParams({ title, kind: kind || SITE, ...(date ? { date } : {}) })
+  : 'home=1'}`, location.origin).href
+
+export function useSeo({ title, description = '', image = '', type = 'website', published, modified, path, prev, next, noindex, canonical, kind, lang } = {}) {
   useEffect(() => {
-    const full = title ? `${title} — ${SITE}` : `${SITE} — Software Tester`
+    const full = title ? `${title} — ${SITE}` : `${SITE} — Manual QA Tester`
     document.title = full
     const desc = String(description || '').slice(0, 160)
-    const img = absolute(image)
+    const own = absolute(image)
+    const img = own || (noindex ? '' : ogCard(title, kind, type === 'article' ? published : ''))
     // canonical: bài đăng lại chọn "bản gốc là bản chính" thì trỏ về link gốc
     const url = canonical || (path && !HASH ? new URL(path, location.origin).href : location.href)
     setMeta('name', 'description', desc)
     setMeta('property', 'og:title', title || full); setMeta('property', 'og:description', desc)
     setMeta('property', 'og:type', type); setMeta('property', 'og:url', url); setMeta('property', 'og:image', img)
-    setMeta('property', 'og:locale', 'vi_VN'); setMeta('property', 'og:site_name', SITE)
+    setMeta('property', 'og:image:width', img && !own ? '1200' : ''); setMeta('property', 'og:image:height', img && !own ? '630' : '')
+    setMeta('property', 'og:locale', lang === 'en' ? 'en_US' : 'vi_VN'); setMeta('property', 'og:site_name', SITE)
     setMeta('name', 'twitter:card', img ? 'summary_large_image' : 'summary')
     setMeta('name', 'twitter:title', title || full); setMeta('name', 'twitter:description', desc); setMeta('name', 'twitter:image', img)
     setMeta('property', 'article:published_time', type === 'article' ? published : '')
@@ -50,5 +57,5 @@ export function useSeo({ title, description = '', image = '', type = 'website', 
       if (!ld) { ld = document.createElement('script'); ld.type = 'application/ld+json'; ld.id = 'seo-ld'; document.head.appendChild(ld) }
       ld.textContent = JSON.stringify({ '@context': 'https://schema.org', '@type': 'BlogPosting', headline: title, description: desc, image: img || undefined, datePublished: published, dateModified: modified || published, author: { '@type': 'Person', name: SITE }, mainEntityOfPage: url })
     } else ld?.remove()
-  }, [title, description, image, type, published, modified, path, prev, next, noindex, canonical])
+  }, [title, description, image, type, published, modified, path, prev, next, noindex, canonical, kind, lang])
 }

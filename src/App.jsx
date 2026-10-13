@@ -184,19 +184,29 @@ function Navbar({ off, forced, langSwitch, brand }) {
   const shown = links.filter(([id]) => !off(SECTION_OF[id]))
   const [spy, pick] = useActive(shown.map(l => l[0]))
   const active = forced || spy
+  const btn = useRef(null)
+  // Menu điện thoại đang mở: Esc để đóng (trả focus về nút), khóa cuộn trang phía sau
+  useEffect(() => {
+    if (!open) return
+    const onKey = e => { if (e.key === 'Escape') { setOpen(false); btn.current?.focus() } }
+    const mq = matchMedia('(max-width: 767px)')
+    const lock = () => { document.documentElement.style.overflow = mq.matches ? 'hidden' : '' }
+    lock(); mq.addEventListener('change', lock); addEventListener('keydown', onKey)
+    return () => { document.documentElement.style.overflow = ''; mq.removeEventListener('change', lock); removeEventListener('keydown', onKey) }
+  }, [open])
   return (
     <nav className="site-nav sticky top-[env(safe-area-inset-top,0px)] z-50 h-[72px] border-b border-line bg-[#0a0c14]/90">
       <i aria-hidden className={`scroll-progress pointer-events-none absolute inset-x-0 -bottom-px h-[2px] ${grad}`} />
       <div className="mx-auto flex h-full w-[min(1180px,100%-32px)] items-center justify-between sm:w-[min(1180px,100%-48px)]">
         <a href="#home" className="text-xl font-extrabold tracking-tight"><BrandLogo brand={brand} /></a>
         <div className="ml-auto mr-3 md:order-last md:ml-4 md:mr-0">{langSwitch && <LangSwitch />}</div>
-        <button aria-label={t('nav.open')} aria-expanded={open} onClick={() => setOpen(!open)}
+        <button ref={btn} aria-label={t(open ? 'nav.close' : 'nav.open')} aria-expanded={open} aria-controls="site-menu" onClick={() => setOpen(!open)}
           className="flex size-11 flex-col items-center justify-center gap-[5px] rounded-xl border border-line md:hidden">
           <i className={`block h-0.5 w-[18px] rounded bg-white transition ${open ? 'translate-y-[7px] rotate-45' : ''}`} />
           <i className={`block h-0.5 w-[18px] rounded bg-white transition ${open ? 'opacity-0' : ''}`} />
           <i className={`block h-0.5 w-[18px] rounded bg-white transition ${open ? '-translate-y-[7px] -rotate-45' : ''}`} />
         </button>
-        <div className={`absolute inset-x-0 top-[72px] flex flex-col gap-1 border-b border-line bg-[#0a0c14]/95 p-4 transition md:static md:ml-auto md:flex-row md:items-center md:border-0 md:bg-transparent md:p-0
+        <div id="site-menu" className={`absolute inset-x-0 top-[72px] flex flex-col gap-1 border-b border-line bg-[#0a0c14]/95 p-4 transition md:static md:ml-auto md:flex-row md:items-center md:border-0 md:bg-transparent md:p-0
           ${open ? 'visible translate-y-0 opacity-100' : 'invisible -translate-y-3 opacity-0 md:visible md:translate-y-0 md:opacity-100'}`}>
           {shown.map(([id]) => (
             <a key={id} href={`#${id}`} onClick={() => { pick(id); setOpen(false) }}
@@ -313,21 +323,21 @@ function Footer({ settings: s, links, socials, off, cv }) {
               </span>
             )}
             {cv && !off('sec_footer_cv') && <a href={cv} target="_blank" rel="noreferrer" download="CongMinh-CV.pdf" className={`${grad} mt-5 block w-fit rounded-xl px-5 py-2.5 text-sm font-semibold`}>{t('foot.cv')}</a>}
-            {!off('sec_footer_cv_online') && !off('sec_page_cv') && <a href={href('/cv')} className="mt-3 block w-fit text-sm text-muted transition hover:text-pink">{t('cv.view')} →</a>}
+            {!off('sec_footer_cv_online') && !off('sec_page_cv') && <a href={href('/cv')} className="mt-3 flex min-h-6 w-fit items-center text-sm text-muted transition hover:text-pink">{t('cv.view')} →</a>}
           </div>}
 
           {!off('sec_footer_menu') && links.length > 0 && (
             <FCol title={t('foot.menu')}>
               <ul className="space-y-2.5 text-sm text-muted">
-                {links.map(l => <li key={l.id}><a href={l.href} {...(isExt(l.href) ? { target: '_blank', rel: 'noreferrer' } : {})} className="transition hover:text-pink">{l.label}</a></li>)}
+                {links.map(l => <li key={l.id}><a href={l.href} {...(isExt(l.href) ? { target: '_blank', rel: 'noreferrer' } : {})} className="inline-flex min-h-6 items-center transition hover:text-pink">{l.label}</a></li>)}
               </ul>
             </FCol>
           )}
 
           {!off('sec_footer_contact') && hasContact && <FCol title={t('foot.contact')}>
             <ul className="space-y-2.5 text-sm text-muted">
-              {s.email && <li>✉️ <a href={`mailto:${s.email}`} className="break-all transition hover:text-pink">{s.email}</a></li>}
-              {s.phone && <li>📞 <a href={`tel:${tel}`} className="transition hover:text-pink">{s.phone}</a></li>}
+              {s.email && <li>✉️ <a href={`mailto:${s.email}`} className="inline-flex min-h-6 items-center break-all transition hover:text-pink">{s.email}</a></li>}
+              {s.phone && <li>📞 <a href={`tel:${tel}`} className="inline-flex min-h-6 items-center transition hover:text-pink">{s.phone}</a></li>}
               {s.address && <li>📍 {s.address}</li>}
               {s.working_hours && <li>🕘 {s.working_hours}</li>}
             </ul>
@@ -349,8 +359,8 @@ function Footer({ settings: s, links, socials, off, cv }) {
           {s.copyright && <span>{s.copyright}</span>}
           {s.footer_note && <span className="text-center">{s.footer_note}</span>}
           {(!off('sec_footer_selftest') && !off('sec_page_selftest') || !off('sec_footer_rss')) && <span className="flex items-center gap-4">
-            {!off('sec_footer_selftest') && !off('sec_page_selftest') && <a href={href('/kiem-thu')} className="transition hover:text-pink">{t('qa.title')}</a>}
-            {!off('sec_footer_rss') && <a href={lang === 'en' ? '/rss-en.xml' : '/rss.xml'} title={t('rss.follow')} className="inline-flex items-center gap-1.5 transition hover:text-pink">
+            {!off('sec_footer_selftest') && !off('sec_page_selftest') && <a href={href('/kiem-thu')} className="inline-flex min-h-6 items-center transition hover:text-pink">{t('qa.title')}</a>}
+            {!off('sec_footer_rss') && <a href={lang === 'en' ? '/rss-en.xml' : '/rss.xml'} title={t('rss.follow')} className="inline-flex min-h-6 items-center gap-1.5 transition hover:text-pink">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" className="size-3.5" aria-hidden="true"><path d="M4 11a9 9 0 0 1 9 9 M4 4a16 16 0 0 1 16 16" /><circle cx="5" cy="19" r="1.2" fill="currentColor" /></svg>{t('rss.title')}
             </a>}
           </span>}
@@ -415,11 +425,11 @@ function SiteBody({ path, raw, lang }) {
   const blogPosts = off('sec_blog') ? [] : posts
   const post = page === 'post' ? blogPosts.find(p => p.id === id) : null
   // SEO trang Blog: mỗi trang có link riêng, tiêu đề + mô tả có số trang, liên kết trang trước/sau
-  const { total: blogTotal } = blogPages(blogPosts, tag)
+  const { total: blogTotal, list: blogList } = blogPages(blogPosts, tag)
   const pgLabel = pageNo > 1 ? ` — ${t('pg.page')} ${pageNo}` : ''
   const blogSeo = {
-    title: `${tag ? `Blog #${tag}` : 'Blog'}${pgLabel}`, description: t('seo.blog') + pgLabel.replace(' — ', ' '), path: blogPath(tag, pageNo),
-    prev: pageNo > 1 && pageNo <= blogTotal ? blogPath(tag, pageNo - 1) : '', next: pageNo < blogTotal ? blogPath(tag, pageNo + 1) : '', noindex: pageNo > blogTotal,
+    title: `${tag ? `Blog #${tag}` : 'Blog'}${pgLabel}`, kind: 'Blog', description: t('seo.blog') + pgLabel.replace(' — ', ' '), path: blogPath(tag, pageNo),
+    prev: pageNo > 1 && pageNo <= blogTotal ? blogPath(tag, pageNo - 1) : '', next: pageNo < blogTotal ? blogPath(tag, pageNo + 1) : '', noindex: pageNo > blogTotal || (!!tag && !blogList.length),
   }
   const proj = page === 'project' ? (off('sec_work') ? [] : projects).find(p => p.id === id) : null
   const shownBugs = off('sec_bugs') ? [] : bugs
@@ -436,15 +446,16 @@ function SiteBody({ path, raw, lang }) {
     if (want && pathname !== want) navigate(want, { replace: true })
   }, [post?.id, post?.slug, post?.title, proj?.id, proj?.title, bug?.id, bug?.title])
 
-  useSeo(missing ? { title: t('nf.title'), description: t('nf.lead'), path: pathname, noindex: true }
-    : page === 'post' && post ? { title: post.title, description: post.excerpt, image: post.image, type: 'article', published: post.published_at, path: postPath(post), canonical: post.canonical_source && /^https?:\/\//i.test(post.url || '') ? post.url : '' }
-    : page === 'project' && proj ? { title: proj.title, description: proj.description, image: proj.image, path: projectPath(proj) }
-    : page === 'bug' && bug ? { title: bug.title, description: [bug.product, bug.actual].filter(Boolean).join(' — ').replace(/[*#>`]/g, ''), path: bugPath(bug) }
-    : page === 'selftest' ? { title: t('qa.title'), description: t('qa.seo.desc'), path: '/kiem-thu' }
-    : page === 'cv' ? { title: 'CV', description: t('cv.seo'), image: hero.avatar.image, path: '/cv' }
+  // kind: chữ nhỏ trên ảnh chia sẻ tự tạo (/api/og), khớp với api/page.js
+  useSeo({ lang, ...(missing ? { title: t('nf.title'), description: t('nf.lead'), path: pathname, noindex: true }
+    : page === 'post' && post ? { title: post.title, description: post.excerpt, image: post.image, kind: 'Blog', type: 'article', published: post.published_at, path: postPath(post), canonical: post.canonical_source && /^https?:\/\//i.test(post.url || '') ? post.url : '' }
+    : page === 'project' && proj ? { title: proj.title, description: proj.description, image: proj.image, kind: proj.category || 'Dự án', path: projectPath(proj) }
+    : page === 'bug' && bug ? { title: bug.title, description: [bug.product, bug.actual].filter(Boolean).join(' — ').replace(/[*#>`]/g, ''), kind: 'Bug report', path: bugPath(bug) }
+    : page === 'selftest' ? { title: t('qa.title'), description: t('qa.seo.desc'), kind: 'QA', path: '/kiem-thu' }
+    : page === 'cv' ? { title: 'CV', description: t('cv.seo'), image: hero.avatar.image, kind: 'Manual QA Tester', path: '/cv' }
     : page === 'blog' ? blogSeo
-
-    : { description: hero.lead, image: hero.avatar.image, path: '/' })
+    // Trang chủ: luôn dùng ảnh chia sẻ tự tạo /api/og?home=1 như phía server
+    : { description: hero.lead, path: '/' }) })
 
   // Đổi trang thì lên đầu; về trang chủ kèm #muc thì nhảy tới đúng mục
   useEffect(() => {
@@ -549,7 +560,7 @@ function SiteBody({ path, raw, lang }) {
                   <div className={label}>{p.category}</div>
                   <h3 className="mb-2 mt-1.5 text-[22px] font-semibold"><a href={href(projectPath(p))} className="block transition hover:text-pink">{p.title}</a></h3>
                   <p className="mb-3.5 text-[14.5px] text-muted">{p.description}</p>
-                  <a href={href(projectPath(p))} className="inline-flex items-center gap-1.5 text-[13px] font-semibold">{t('work.more')} <span className="transition group-hover:translate-x-1.5">→</span></a>
+                  <a href={href(projectPath(p))} className="inline-flex min-h-6 items-center gap-1.5 text-[13px] font-semibold">{t('work.more')} <span className="transition group-hover:translate-x-1.5">→</span></a>
                 </article>
               </Reveal>
             )})}
