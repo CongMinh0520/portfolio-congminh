@@ -90,11 +90,14 @@ function DailyChart({ daily }) {
         {n > 2 && <span>{fmt(daily[Math.floor((n - 1) / 2)].day, { day: 'numeric', month: 'numeric' })}</span>}
         <span>{a('Hôm nay')}</span>
       </div>
-      <table className="sr-only">
-        <caption>{a('Lượt xem theo ngày')}</caption>
-        <thead><tr><th>{a('Ngày')}</th><th>{a('Lượt xem')}</th><th>{a('Người xem')}</th></tr></thead>
-        <tbody>{daily.map(d => <tr key={d.day}><td>{d.day}</td><td>{d.views}</td><td>{d.visitors}</td></tr>)}</tbody>
-      </table>
+      {/* sr-only đặt ở div bọc ngoài: bảng không chịu co về 1px nên sẽ tràn xuống dưới trang, đẩy menu trái lệch lên */}
+      <div className="sr-only">
+        <table>
+          <caption>{a('Lượt xem theo ngày')}</caption>
+          <thead><tr><th>{a('Ngày')}</th><th>{a('Lượt xem')}</th><th>{a('Người xem')}</th></tr></thead>
+          <tbody>{daily.map(d => <tr key={d.day}><td>{d.day}</td><td>{d.views}</td><td>{d.visitors}</td></tr>)}</tbody>
+        </table>
+      </div>
     </div>
   )
 }

@@ -8,6 +8,7 @@ import { mergeHero } from './HeroVisual.jsx'
 import { TR_FIELDS, SETTINGS_TR, HERO_TR, CTA_TR, getPath, setPath, hasEn, LANGS } from './i18n.js'
 import { suggest, getMmEmail, setMmEmail } from './translate.js'
 import { useA, at } from './adminLang.js'
+import { selftestOf } from './selftestData.js'
 
 const grad = 'bg-gradient-to-r from-pink to-purple'
 const input = 'w-full rounded-lg border border-line bg-[#0b0d16] px-3 py-2.5 text-sm outline-none transition focus:border-purple focus:ring-2 focus:ring-purple/25'
@@ -120,6 +121,10 @@ export default function LangPage({ toast, go }) {
   if (!row) return <p className="text-muted">{a('Đang tải…')}</p>
   const h = mergeHero(row.hero)
   const heroMiss = missingOf(heroEnFields(h), h, h.en), heroAll = heroEnFields(h).filter(([p]) => filled(getPath(h, p))).length
+  // Trang Kiểm thử: mỗi ô có bản English ở trường *_en ngay bên cạnh
+  const st = selftestOf(row.selftest)
+  const stPairs = [[st, 'intro'], [st, 'tool'], ...st.envs.flatMap(e => [[e, 'name'], [e, 'note']]), ...st.checks.map(c => [c, 'text']), ...st.found.flatMap(f => [[f, 'title'], [f, 'detail']])].filter(([r, k]) => filled(r[k]))
+  const stAll = stPairs.length, stDone = stPairs.filter(([r, k]) => filled(r[`${k}_en`])).length
   const setMiss = missingOf(SETTINGS_TR, row, row.en || {}) + missingOf(CTA_TR, h, h.en), setAll = [...SETTINGS_TR.filter(([p]) => filled(row[p])), ...CTA_TR.filter(([p]) => filled(getPath(h, p)))].length
   const areas = [
     ['hero', 'Đầu trang', heroAll - heroMiss, heroAll, '{done}/{total} ô đã dịch'],
@@ -129,6 +134,7 @@ export default function LangPage({ toast, go }) {
     ['footer_links', 'Menu footer', stats?.footer_links?.done, stats?.footer_links?.total, '{done}/{total} mục đã dịch'],
     ['posts', 'Blog', stats?.posts?.done, stats?.posts?.total, '{done}/{total} bài đã dịch'],
     ['bugs', 'Bug mẫu', stats?.bugs?.done, stats?.bugs?.total, '{done}/{total} mục đã dịch'],
+    ['selftest', 'Trang Kiểm thử web', stDone, stAll, '{done}/{total} ô đã dịch'],
     ['settings', 'Thông tin chung + khối cuối bài', setAll - setMiss, setAll, '{done}/{total} ô đã dịch'],
   ]
   const def = row.lang_default === 'en' ? 'en' : 'vi', sw = row.lang_switch !== false
