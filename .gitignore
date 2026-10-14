@@ -5,3 +5,6 @@ dist
 !.env.example
 .vercel
 .claude
+
+# Supabase CLI (tự tạo khi chạy npx supabase)
+supabase/.temp/
