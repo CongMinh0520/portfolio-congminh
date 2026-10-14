@@ -30,7 +30,9 @@ import { BugReport, BugBadges, SEVERITIES, PRIORITIES, STATUSES } from './Bugs.j
 import SelfTestAdmin from './SelfTestAdmin.jsx'
 import { mergeHero, DEFAULT_HERO } from './HeroVisual.jsx'
 import { autoCover, coverOf, newSeed } from './autoArt.js'
-import AdminSearch, { focusWhenReady, textOf, isMac } from './AdminSearch.jsx'
+import AdminSearch, { focusWhenReady, jumpToText, textOf, isMac } from './AdminSearch.jsx'
+import SUB_SECTIONS from 'virtual:admin-sections' // tự lập lúc build từ code các trang (vite.config.js)
+import { SYNONYMS } from './adminSearchIndex.js'
 
 /* ---------------- Cấu hình nội dung ---------------- */
 const SCHEMA = {
@@ -878,35 +880,39 @@ export default function Admin() {
     if (!searchOpen) return []
     const out = []
     // Trang trong Admin (tìm được cả tên tiếng Việt lẫn English)
-    NAV.forEach(([, list]) => list.forEach(([k, l, icon]) => out.push({ id: `page:${k}`, group: a('Trang'), icon, title: a(l), sub: `/admin${ADMIN_SLUGS[k] ? '/' + ADMIN_SLUGS[k] : ''}`, text: l, quick: true, boost: 1, run: () => go(k) })))
-    out.push({ id: 'page:account', group: a('Trang'), icon: 'badge', title: a('Tài khoản của tôi'), sub: '/admin/tai-khoan', text: 'Tài khoản của tôi mật khẩu ảnh đại diện', boost: 1, run: () => go('account') })
+    NAV.forEach(([, list]) => list.forEach(([k, l, icon]) => out.push({ id: `page:${k}`, kind: 'page', group: a('Trang'), icon, title: a(l), sub: `/admin${ADMIN_SLUGS[k] ? '/' + ADMIN_SLUGS[k] : ''}`, text: l, quick: true, boost: 1, run: () => go(k) })))
+    out.push({ id: 'page:account', kind: 'page', group: a('Trang'), icon: 'badge', title: a('Tài khoản của tôi'), sub: '/admin/tai-khoan', text: 'Tài khoản của tôi mật khẩu ảnh đại diện', boost: 1, run: () => go('account') })
     // Thao tác nhanh
     ;[['new-project', 'Thêm dự án', 'plus', () => go('projects', true)], ['new-post', 'Viết bài blog', 'plus', () => go('posts', true)],
       ['new-bug', 'Thêm bug mẫu', 'plus', () => go('bugs', true)], ['new-skill', 'Thêm kỹ năng', 'plus', () => go('skills', true)],
       ['new-job', 'Thêm kinh nghiệm', 'plus', () => go('jobs', true)], ['view-site', 'Xem trang', 'external', () => navigate('/')],
       ['lang', adminLang === 'en' ? 'Chuyển Admin sang Tiếng Việt' : 'Chuyển Admin sang English', 'globe', () => setAdminLang(adminLang === 'en' ? 'vi' : 'en')],
       ['logout', 'Đăng xuất', 'logout', () => supabase.auth.signOut()],
-    ].forEach(([id, l, icon, run]) => out.push({ id: `act:${id}`, group: a('Thao tác'), icon, title: a(l), text: l, quick: id.startsWith('new-p'), run }))
+    ].forEach(([id, l, icon, run]) => out.push({ id: `act:${id}`, kind: 'act', group: a('Thao tác'), icon, title: a(l), text: l, quick: id.startsWith('new-p'), run }))
     // Ô trong Thông tin chung (kèm giá trị đang lưu) và khối kêu gọi cuối bài
     const st = found.settings || {}
-    SETTINGS_GROUPS.forEach(([g, , fields]) => fields.forEach(([k, l]) => out.push({ id: `set:${k}`, group: a('Cài đặt'), icon: 'sliders', title: a(l), sub: `${a('Thông tin chung')} › ${a(g)}${st[k] ? ' · ' + textOf(st[k]) : ''}`, text: `${l} ${g} ${textOf(st[k])} ${textOf(st.en?.[k])}`, run: () => { go('settings'); focusWhenReady(`#s-${k}`) } })))
+    SETTINGS_GROUPS.forEach(([g, , fields]) => fields.forEach(([k, l]) => out.push({ id: `set:${k}`, kind: 'set', group: a('Cài đặt'), icon: 'sliders', title: a(l), sub: `${a('Thông tin chung')} › ${a(g)}${st[k] ? ' · ' + textOf(st[k]) : ''}`, text: `${l} ${g} ${textOf(st[k])} ${textOf(st.en?.[k])}`, run: () => { go('settings'); focusWhenReady(`#s-${k}`) } })))
     const cta = mergeHero(st.hero).post_cta
-    ;[['title', 'Tiêu đề'], ['text', 'Mô tả ngắn'], ['button', 'Chữ trên nút'], ['link', 'Nút dẫn tới']].forEach(([k, l]) => out.push({ id: `cta:${k}`, group: a('Cài đặt'), icon: 'sliders', title: `${a('Khối kêu gọi cuối bài viết')} › ${a(l)}`, sub: textOf(cta?.[k]), text: `${l} kêu gọi cuối bài CTA ${textOf(cta?.[k])}`, run: () => { go('settings'); focusWhenReady(`#cta-${k}`) } }))
+    ;[['title', 'Tiêu đề'], ['text', 'Mô tả ngắn'], ['button', 'Chữ trên nút'], ['link', 'Nút dẫn tới']].forEach(([k, l]) => out.push({ id: `cta:${k}`, kind: 'set', group: a('Cài đặt'), icon: 'sliders', title: `${a('Khối kêu gọi cuối bài viết')} › ${a(l)}`, sub: textOf(cta?.[k]), text: `${l} kêu gọi cuối bài CTA ${textOf(cta?.[k])}`, run: () => { go('settings'); focusWhenReady(`#cta-${k}`) } }))
     // Công tắc ẩn/hiện từng phần trang chủ
     const hidden = new Set(st.hidden || [])
-    SECTIONS.forEach(([g, , list]) => list.forEach(([k, l]) => out.push({ id: `lay:${k}`, group: a('Bố cục trang chủ'), icon: hidden.has(k) ? 'eyeOff' : 'eye', title: a(l), sub: a(g), badge: hidden.has(k) ? a('Đang ẩn') : undefined, text: `${l} ${g} ẩn hiện`, run: () => { go('layout'); focusWhenReady(`#lay-${k}`) } })))
+    SECTIONS.forEach(([g, , list]) => list.forEach(([k, l]) => out.push({ id: `lay:${k}`, kind: 'set', group: a('Bố cục trang chủ'), icon: hidden.has(k) ? 'eyeOff' : 'eye', title: a(l), sub: a(g), badge: hidden.has(k) ? a('Đang ẩn') : undefined, text: `${l} ${g} ẩn hiện`, run: () => { go('layout'); focusWhenReady(`#lay-${k}`) } })))
+    // Phần bên trong từng trang (VD Thông báo › Thông báo đẩy): mở trang rồi cuộn tới đúng tiêu đề
+    const iconOf = k => NAV.flatMap(([, l]) => l).find(x => x[0] === k)?.[2] || 'badge'
+    SUB_SECTIONS.forEach(([k, l]) => out.push({ id: `sub:${k}:${l}`, kind: 'set', group: a('Trong trang'), icon: iconOf(k), title: a(l), sub: `${a(TITLES[k])} › ${a(l)}`,
+      text: `${l} ${TITLES[k]} ${SYNONYMS[l] || ''}`, run: () => { go(k); jumpToText(a(l)) } }))
     // Nội dung: mọi trường chữ + bản English
     Object.entries(SCHEMA).forEach(([t, cfg]) => (found[t] || []).forEach(r => {
       const body = cfg.fields.filter(([, , type]) => !['cover', 'shot', 'select', 'check'].includes(type)).map(([k]) => textOf(r[k])).join(' · ')
       const sub = t === 'posts' ? `${a(STATUS_UI[postStatus(r)][0])}${r.published_at ? ' · ' + fmtDay(r.published_at) : ''}${r.excerpt ? ' · ' + textOf(r.excerpt) : ''}`
         : t === 'bugs' ? `${bugCode(r)} · ${textOf(r.product)}` : textOf(r[cfg.sub])
-      out.push({ id: `${t}:${r.id}`, group: a(cfg.label), icon: cfg.icon, emoji: t === 'skills' ? r.icon : undefined, title: textOf(r[cfg.title]) || a('(chưa có tiêu đề)'), sub,
+      out.push({ id: `${t}:${r.id}`, kind: 'content', table: t, group: a(cfg.label), icon: cfg.icon, emoji: t === 'skills' ? r.icon : undefined, title: textOf(r[cfg.title]) || a('(chưa có tiêu đề)'), sub,
         badge: t !== 'posts' && r.visible === false ? a('Đang ẩn') : undefined, text: `${body} ${textOf(r.en)} ${t === 'bugs' ? bugCode(r) : ''}`, run: () => go(t, false, r.id) })
     }))
     // Tin nhắn: gom theo email như hộp thư
     const threads = new Map()
     ;(found.messages || []).forEach(m => { const k = String(m.email || '').trim().toLowerCase(); const x = threads.get(k) || { k, name: m.name, email: m.email, msgs: [], unread: 0 }; x.msgs.push(m.message); if (!m.read) x.unread++; threads.set(k, x) })
-    threads.forEach(x => out.push({ id: `msg:${x.k}`, group: a('Tin nhắn'), icon: 'mail', title: x.name || x.email, sub: `${x.email} · ${textOf(x.msgs[0])}`, badge: x.unread ? a('{n} chưa đọc', { n: x.unread }) : undefined, text: x.msgs.join(' · '), run: () => { go('messages'); setOpenThread({ key: x.k, t: Date.now() }) } }))
+    threads.forEach(x => out.push({ id: `msg:${x.k}`, kind: 'msg', table: 'messages', group: a('Tin nhắn'), icon: 'mail', title: x.name || x.email, sub: `${x.email} · ${textOf(x.msgs[0])}`, badge: x.unread ? a('{n} chưa đọc', { n: x.unread }) : undefined, text: x.msgs.join(' · '), run: () => { go('messages'); setOpenThread({ key: x.k, t: Date.now() }) } }))
     return out
   }, [searchOpen, found, adminLang])
   // Số trên tab trình duyệt: tin chưa đọc + bài chờ duyệt (tùy cài đặt Thông báo)
