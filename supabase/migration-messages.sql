@@ -19,3 +19,11 @@ do $$ begin
     alter publication supabase_realtime add table public.messages;
   end if;
 end $$;
+-- Trả lời ngay trong Admin: tin của Admin (email gửi khách / ghi chú nội bộ) nằm chung bảng, gom theo email khách.
+alter table public.messages add column if not exists direction text not null default 'in';    -- in: khách gửi · out: Admin trả lời qua email · note: ghi chú nội bộ
+alter table public.messages add column if not exists status text not null default '';         -- out: sent | external (soạn trong Gmail) | failed
+alter table public.messages add column if not exists subject text not null default '';
+alter table public.messages add column if not exists attachments jsonb not null default '[]'::jsonb; -- [{name, url, size, type}]
+-- Mẫu trả lời nhanh + chữ ký (Admin → Tin nhắn → Mẫu trả lời)
+-- (bảng admin_settings có từ migration-thong-bao-seo.sql; chưa chạy thì bỏ qua dòng này)
+alter table if exists public.admin_settings add column if not exists reply jsonb not null default '{}'::jsonb;

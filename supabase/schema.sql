@@ -188,6 +188,11 @@ do $$ begin
     alter publication supabase_realtime add table public.messages;
   end if;
 end $$;
+-- Trả lời ngay trong Admin: tin của Admin (email gửi khách / ghi chú nội bộ) nằm chung bảng, gom theo email khách.
+alter table public.messages add column if not exists direction text not null default 'in';    -- in | out | note
+alter table public.messages add column if not exists status text not null default '';         -- out: sent | external | failed
+alter table public.messages add column if not exists subject text not null default '';
+alter table public.messages add column if not exists attachments jsonb not null default '[]'::jsonb;
 
 -- ===== Song ngữ Việt / Anh =====
 alter table public.projects add column if not exists en jsonb not null default '{}'::jsonb;
@@ -218,6 +223,7 @@ create table if not exists public.admin_settings (
 alter table public.admin_settings enable row level security;
 drop policy if exists "admin all" on public.admin_settings;
 create policy "admin all" on public.admin_settings for all to authenticated using (true) with check (true);
+alter table public.admin_settings add column if not exists reply jsonb not null default '{}'::jsonb; -- mẫu trả lời nhanh + chữ ký
 insert into public.admin_settings (id) values (1) on conflict (id) do nothing;
 -- Bài viết: bản English + "bản gốc ở nơi khác là bản chính"
 alter table public.posts add column if not exists en jsonb not null default '{}'::jsonb;
