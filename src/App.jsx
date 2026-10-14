@@ -481,7 +481,8 @@ function SiteBody({ path, raw, lang }) {
         } else if (!HASH) { e.preventDefault(); navigate(`/${h}`) }
         return
       }
-      if (!HASH && h.startsWith('/') && !h.startsWith('//')) {
+      // Link tới file (/rss.xml, .pdf...) phải tải thật từ máy chủ, không chuyển trang trong app
+      if (!HASH && h.startsWith('/') && !h.startsWith('//') && !a.hasAttribute('download') && !/\.[a-z0-9]+$/i.test(h.split(/[?#]/)[0])) {
         e.preventDefault()
         const [pth, sec] = h.split('#')
         if (sec && (pth === '/' || pth === '') && page === 'home') { const el = document.getElementById(sec); if (el) { history.replaceState(null, '', h); smoothScrollTo(sectionTop(el)); return } }
