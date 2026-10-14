@@ -6,12 +6,17 @@ import { Copy, Value } from './AutoPostAdmin.jsx'
 import SQL from '../supabase/migration-messages.sql?raw'
 import FN_CODE from '../supabase/functions/gui-tin-nhan/index.ts?raw'
 import { useA, at, adminLocale } from './adminLang.js'
+import ReplyComposer, { TemplatesDialog, FileChip, Icon, sendReplyMail, replyErrorText } from './ReplyComposer.jsx'
+import { loadAdminSettings } from './notify.js'
+import { loadSettings } from './useContent.js'
 
 const grad = 'bg-gradient-to-r from-pink to-purple'
 const btn = 'inline-flex items-center justify-center gap-2 rounded-lg px-3 py-1.5 text-sm font-semibold transition disabled:opacity-50'
 const ghost = `${btn} border border-line text-[#c9cbd8] hover:border-[#3a3f5a] hover:bg-white/5 hover:text-white`
 const input = 'w-full rounded-lg border border-line bg-[#0b0d16] px-3 py-2 text-sm outline-none transition focus:border-purple focus:ring-2 focus:ring-purple/25'
 
+/** Tin khách gửi (không tính thư Admin trả lời và ghi chú nội bộ) */
+export const isIn = m => (m.direction || 'in') === 'in'
 export const loadMessages = () => supabase.from('messages').select('*').order('created_at', { ascending: false })
   .then(({ data, error }) => { if (error) throw error; return data || [] })
 
@@ -40,7 +45,8 @@ const Avatar = ({ t, size = 'size-11 text-sm' }) => (
 )
 const initials = n => (n || '?').trim().split(/\s+/).slice(-2).map(w => w[0]).join('').toUpperCase()
 
-/** Gom tin nhắn theo email (không phân biệt hoa thường) thành hội thoại, mới nhất lên đầu */
+/** Gom tin nhắn theo email (không phân biệt hoa thường) thành hội thoại, mới nhất lên đầu.
+    Tên và số chưa đọc chỉ tính tin khách gửi; xem trước lấy tin cuối cùng (kể cả thư mình trả lời). */
 function toThreads(rows) {
   const map = new Map()
   rows.forEach(m => {
@@ -50,8 +56,9 @@ function toThreads(rows) {
   })
   return [...map.values()].map(t => {
     t.msgs.sort((x, y) => new Date(x.created_at) - new Date(y.created_at))
-    const last = t.msgs[t.msgs.length - 1]
-    return { ...t, name: last.name, last, unread: t.msgs.filter(m => !m.read).length }
+    const ins = t.msgs.filter(isIn)
+    const last = t.msgs[t.msgs.length - 1], lastIn = ins[ins.length - 1] || last
+    return { ...t, name: lastIn.name, last, lastIn, unread: ins.filter(m => !m.read).length }
   }).sort((x, y) => new Date(y.last.created_at) - new Date(x.last.created_at))
 }
 
@@ -89,6 +96,9 @@ export function SetupHelp() {
             {step(4, a('Lưu Secret Key'), <><p>Edge Functions → Secrets:</p><Value>TURNSTILE_SECRET</Value></>)}
             {step(5, a('Thêm Site Key cho web'), <><p>{a('Vercel → Settings → Environment Variables, rồi Redeploy:')}</p><Value>VITE_TURNSTILE_SITE_KEY</Value></>)}
             {step(6, a('Gửi thử'), <p>{a('Trang chủ → Liên hệ → gửi form, tin hiện ngay ở đây.')}</p>)}
+            {step(7, a('Trả lời khách ngay trong Admin'), <><p>{a('Chạy lại SQL ở bước 1 và Deploy lại mã hàm ở bước 3 (bản mới). Email gửi qua Resend (Cài đặt → Thông báo → Email).')}</p>
+              <p>{a('Muốn gửi được tới mọi khách: Resend → Domains → verify tên miền, rồi đặt RESEND_FROM là địa chỉ trên tên miền đó. Chưa có tên miền thì bấm mũi tên cạnh nút Gửi → "Mở trong Gmail".')}</p></>)}
+            {step(8, a('AI viết nháp (không bắt buộc)'), <><p>{a('Lấy API key ở console.anthropic.com, rồi Edge Functions → Secrets:')}</p><Value>ANTHROPIC_API_KEY</Value></>)}
           </ol>
           <details className="border-t border-line pt-3 text-xs text-[#c9cbd8]">
             <summary className="cursor-pointer font-semibold text-white">{a('Gặp lỗi?')}</summary>
@@ -105,6 +115,40 @@ export function SetupHelp() {
   )
 }
 
+/* Bong bóng tin: khách bên trái; thư mình trả lời (tím) và ghi chú nội bộ (vàng) bên phải */
+function Bubble({ m, cur, retrying, onRetry }) {
+  const a = useA()
+  const files = m.attachments || []
+  if (isIn(m)) return (
+    <div className="flex max-w-[640px] items-end gap-2">
+      <div className="min-w-0 rounded-2xl rounded-bl-md border border-line bg-[#0b0d16] px-4 py-3">
+        {m.name !== cur.name && <p className="mb-1 text-xs font-semibold text-[#b5aaff]">{m.name}</p>}
+        <p className="whitespace-pre-wrap break-words leading-relaxed text-[#e6e7f0]">{m.message}</p>
+        <p className="mt-1.5 text-[11px] text-muted">{timeOf(m.created_at)}</p>
+      </div>
+    </div>
+  )
+  const note = m.direction === 'note', failed = m.status === 'failed'
+  const box = note ? 'border-[#f8d27c]/30 bg-[#f8d27c]/[0.08]' : failed ? 'border-red-400/50 bg-red-500/[0.06]' : 'border-purple/40 bg-purple/[0.14]'
+  return (
+    <div className="ml-auto flex max-w-[640px] justify-end">
+      <div className={`min-w-0 rounded-2xl rounded-br-md border px-4 py-3 ${box}`}>
+        {note ? <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-[#f8d27c]"><Icon d="M5 3h10l4 4v14H5z M15 3v4h4 M8 12h8 M8 16h5" className="size-3.5" />{a('Ghi chú nội bộ')}</p>
+          : m.subject && <p className="mb-1 truncate text-xs font-semibold text-[#c9bfff]">{m.subject}</p>}
+        <p className="whitespace-pre-wrap break-words leading-relaxed text-[#eeeaff]">{m.message}</p>
+        {files.length > 0 && <div className="mt-2 flex flex-wrap gap-1.5">{files.map(f => <FileChip key={f.url} f={f} href={f.url} />)}</div>}
+        <p className={`mt-1.5 flex flex-wrap items-center justify-end gap-x-1.5 text-[11px] ${failed ? 'text-red-300' : note ? 'text-[#f8d27c]/70' : 'text-[#a99dff]'}`}>
+          {!note && <Icon d="M3 6h18v12H3z M3 7l9 6 9-6" className="size-3" />}
+          {note ? '' : failed ? a('Chưa gửi được') : m.status === 'external' ? a('Soạn trong Gmail / app email') : a('Đã gửi qua email')}
+          {!note && ' · '}{timeOf(m.created_at)}
+          {m.status === 'sent' && <span aria-hidden="true">✓✓</span>}
+          {failed && <button type="button" onClick={onRetry} disabled={retrying} className="ml-1 font-semibold underline underline-offset-2 hover:text-white disabled:opacity-60">{retrying ? a('Đang gửi…') : a('Gửi lại')}</button>}
+        </p>
+      </div>
+    </div>
+  )
+}
+
 export default function MessagesAdmin({ toast, live, onChanged, openThread }) {
   const a = useA()
   const [rows, setRows] = useState(null); const [err, setErr] = useState('')
@@ -115,6 +159,33 @@ export default function MessagesAdmin({ toast, live, onChanged, openThread }) {
   const end = useRef(null)
   const reload = () => loadMessages().then(r => { setRows(r); setErr('') }).catch(e => { setRows([]); setErr(e.message || String(e)) })
   useEffect(() => { reload() }, [live])
+
+  // Cho ô soạn trả lời: mẫu + chữ ký, tên người gửi, file CV ở Trang chủ (cho thư viện file)
+  const [replyCfg, setReplyCfg] = useState({}); const [manage, setManage] = useState(false)
+  const [me, setMe] = useState({ from: '', cvs: [] }); const [extraFiles, setExtraFiles] = useState([])
+  useEffect(() => {
+    Promise.all([loadAdminSettings().catch(() => null), loadSettings().catch(() => null), supabase.auth.getUser().catch(() => null)]).then(([adm, st, u]) => {
+      setReplyCfg(adm?.reply && typeof adm.reply === 'object' ? adm.reply : {})
+      const name = String(adm?.notify?.email_from_name || u?.data?.user?.user_metadata?.name || '').trim()
+      const cv = st?.hero?.cv || {}
+      const cvs = [[cv.file, cv.name], [cv.file_en, cv.name_en]].filter(([f]) => f).map(([url, n], i) => ({ url, name: n || (i ? 'CV-en.pdf' : 'CV.pdf'), type: 'application/pdf', cv: true }))
+      setMe({ from: name, cvs })
+    })
+  }, [])
+  // Thư viện file: CV + mọi file đã đính kèm trước đây + file trong mẫu (không trùng)
+  const library = useMemo(() => {
+    const seen = new Map()
+    ;[...me.cvs, ...extraFiles, ...(rows || []).flatMap(m => m.attachments || []), ...(replyCfg.templates || []).flatMap(t => t.files || [])]
+      .forEach(f => { if (f?.url && !seen.has(f.url)) seen.set(f.url, f) })
+    return [...seen.values()]
+  }, [me.cvs, extraFiles, rows, replyCfg])
+  const [retrying, setRetrying] = useState(null)
+  const retry = async m => {
+    setRetrying(m.id)
+    const r = await sendReplyMail({ retryId: m.id, to: m.email, subject: m.subject, text: m.message, from_name: m.name, attachments: m.attachments || [], signature: replyCfg.signature_on !== false ? replyCfg.signature || '' : '' })
+    setRetrying(null); reload()
+    r.ok ? toast(a('Đã gửi email tới {email}', { email: m.email }), 'mail') : toast(replyErrorText(r), 'error')
+  }
 
   const threads = useMemo(() => toThreads(rows || []), [rows])
   const unreadThreads = threads.filter(t => t.unread).length
@@ -136,7 +207,7 @@ export default function MessagesAdmin({ toast, live, onChanged, openThread }) {
     requestAnimationFrame(() => end.current?.scrollIntoView({ block: 'end' }))
   }, [openKey, cur?.msgs.length, cur?.unread])
 
-  const last = cur?.last
+  const last = cur?.lastIn
   // Thư trả lời soạn sẵn theo ngôn ngữ Admin đang chọn
   const reply = last && `mailto:${last.email}?subject=${encodeURIComponent(a('Re: Liên hệ từ portfolio Công Minh'))}&body=${encodeURIComponent(a('Chào {name},\n\n\n\n---\n{name} đã viết:\n> {quote}', { name: last.name, quote: last.message.replace(/\n/g, '\n> ') }))}`
 
@@ -174,7 +245,7 @@ export default function MessagesAdmin({ toast, live, onChanged, openThread }) {
                       <span className={`flex-none text-[11px] ${t.unread ? 'text-[#b5aaff]' : 'text-muted'}`}>{ago(t.last.created_at)}</span>
                     </span>
                     <span className="flex items-center gap-2">
-                      <span className={`min-w-0 flex-1 truncate text-[13px] ${t.unread ? 'font-semibold text-[#dfe0ea]' : 'text-[#7d81a0]'}`}>{t.last.message}</span>
+                      <span className={`min-w-0 flex-1 truncate text-[13px] ${t.unread ? 'font-semibold text-[#dfe0ea]' : 'text-[#7d81a0]'}`}>{t.last.direction === 'note' ? a('Ghi chú: ') : t.last.direction === 'out' ? a('Bạn: ') : ''}{t.last.message}</span>
                       {t.unread > 0 && <span className="grid h-[18px] min-w-[18px] flex-none place-items-center rounded-full bg-red-500 px-1 text-[11px] font-bold tabular-nums text-white">{t.unread}</span>}
                     </span>
                   </span>
@@ -197,8 +268,8 @@ export default function MessagesAdmin({ toast, live, onChanged, openThread }) {
                 <a href={`mailto:${cur.email}`} className="block truncate text-xs text-[#b5aaff] hover:underline">{cur.email}</a>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <a href={reply} className={`${btn} ${grad}`}>{a('Trả lời qua email')}</a>
-                <button onClick={() => { setOpenKey(null); setRead([cur.last.id], false) }} className={ghost} title={a('Đánh dấu chưa đọc và đóng hội thoại')}>{a('Chưa đọc')}</button>
+                <a href={reply} className={ghost} title={a('Mở app email trên máy với thư trả lời soạn sẵn')}><Icon d="mail" />{a('Mở app email')}</a>
+                <button onClick={() => { setOpenKey(null); setRead([cur.lastIn.id], false) }} className={ghost} title={a('Đánh dấu chưa đọc và đóng hội thoại')}>{a('Chưa đọc')}</button>
               </div>
             </header>
             <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-5">
@@ -207,22 +278,18 @@ export default function MessagesAdmin({ toast, live, onChanged, openThread }) {
                 return (
                   <div key={m.id}>
                     {newDay && <p className="my-2 text-center text-[11px] font-medium text-muted">{dayOf(m.created_at)}</p>}
-                    <div className="flex max-w-[640px] items-end gap-2">
-                      <div className="min-w-0 rounded-2xl rounded-bl-md border border-line bg-[#0b0d16] px-4 py-3">
-                        {m.name !== cur.name && <p className="mb-1 text-xs font-semibold text-[#b5aaff]">{m.name}</p>}
-                        <p className="whitespace-pre-wrap break-words leading-relaxed text-[#e6e7f0]">{m.message}</p>
-                        <p className="mt-1.5 text-[11px] text-muted">{timeOf(m.created_at)}</p>
-                      </div>
-                    </div>
+                    <Bubble m={m} cur={cur} retrying={retrying === m.id} onRetry={() => retry(m)} />
                   </div>
                 )
               })}
               <div ref={end} />
             </div>
-            <p className="border-t border-line px-4 py-2.5 text-xs text-muted">{a('Khách gửi qua form Liên hệ. Bấm "Trả lời qua email" để trả lời; lần sau họ gửi tiếp từ cùng email sẽ nằm chung hội thoại này.')}</p>
+            <ReplyComposer thread={cur} quoteMsg={isIn(cur.lastIn) ? cur.lastIn : null} cfg={replyCfg} library={library} fromName={me.from || 'Admin'} owner={me.from}
+              toast={toast} onSaved={reload} onClose={() => setOpenKey(null)} onManage={() => setManage(true)} onLibraryAdd={f => setExtraFiles(l => [...l, f])} onCfgSaved={setReplyCfg} />
           </>)}
         </div>
       </div>
+      {manage && <TemplatesDialog cfg={replyCfg} library={library} toast={toast} onClose={() => setManage(false)} onSaved={setReplyCfg} />}
     </div>
   )
 }

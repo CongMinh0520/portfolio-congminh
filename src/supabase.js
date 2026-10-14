@@ -46,3 +46,17 @@ export async function uploadPdf(file) {
   if (error) throw new Error(at('Không tải được file: {msg}', { msg: error.message }))
   return supabase.storage.from('media').getPublicUrl(path).data.publicUrl
 }
+
+// Tải file đính kèm email (Admin → Tin nhắn) lên kho "media/attachments". Bản demo lưu dạng data URL nên giới hạn nhỏ hơn.
+export async function uploadAttachment(file) {
+  const limit = demoMode ? 2 : 10
+  if (!file) throw new Error(at('Chưa chọn file.'))
+  if (file.size > limit * 1024 * 1024) throw new Error(at('File lớn quá (tối đa {n} MB).', { n: limit }))
+  if (demoMode) return new Promise((ok, fail) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = fail; r.readAsDataURL(file) })
+  // Giữ tên gốc (bỏ dấu, ký tự lạ) để khách tải về vẫn thấy tên dễ hiểu
+  const safe = (file.name || 'file').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').replace(/[^\w.-]+/g, '-').slice(-80)
+  const path = `attachments/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safe}`
+  const { error } = await supabase.storage.from('media').upload(path, file, { contentType: file.type || 'application/octet-stream', upsert: false, cacheControl: '31536000' })
+  if (error) throw new Error(at('Không tải được file: {msg}', { msg: error.message }))
+  return supabase.storage.from('media').getPublicUrl(path).data.publicUrl
+}

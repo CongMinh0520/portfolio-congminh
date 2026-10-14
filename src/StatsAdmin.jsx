@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from './supabase.js'
 import { loadStats } from './stats.js'
-import { loadMessages } from './MessagesAdmin.jsx'
+import { loadMessages, isIn } from './MessagesAdmin.jsx'
 import { useA, adminLocale } from './adminLang.js'
 
 const btn = 'inline-flex items-center justify-center gap-2 rounded-lg px-3 py-1.5 text-sm font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple disabled:opacity-50'
@@ -167,7 +167,7 @@ export default function StatsPanel({ go }) {
   useEffect(() => {
     const titles = t => supabase.from(t).select('id, title').then(({ data }) => Object.fromEntries((data || []).map(r => [r.id, r.title])), () => ({}))
     Promise.all([titles('posts'), titles('projects'), titles('bugs')]).then(([post, project, bug]) => setNames({ post, project, bug }))
-    loadMessages().then(({ data }) => setMsgs(data || []), () => setMsgs([]))
+    loadMessages().then(r => setMsgs((r || []).filter(isIn)), () => setMsgs([]))
   }, [])
   const pick = d => { setDays(d); try { localStorage.setItem(KEY, String(d)) } catch {} }
 

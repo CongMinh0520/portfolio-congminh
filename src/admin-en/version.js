@@ -47,7 +47,7 @@ export default {
   'Ba trạng thái: Bản nháp, Chờ duyệt, Đã đăng': 'Three statuses: Draft, Pending review, Published',
   'Bản tiếng Anh cho từng bài; bài đăng lại có thể trỏ bản chính về link gốc': 'English version per post; reposts can point the canonical to the original link',
   'Đăng nhập bằng Supabase Auth, trang Tài khoản của tôi (tên, ảnh, email, mật khẩu)': 'Supabase Auth login, My account page (name, photo, email, password)',
-  'Hộp thư tin nhắn dạng hội thoại, trả lời qua email': 'Conversation-style inbox, reply by email',
+  'Hộp thư tin nhắn dạng hội thoại, trả lời email ngay trong Admin (mẫu trả lời, AI viết nháp, đính kèm file, chữ ký, ghi chú nội bộ)': 'Conversation-style inbox with email replies right in Admin (quick replies, AI drafts, attachments, signature, internal notes)',
   'Thông báo âm thanh, thông báo hệ thống, số trên tab, email qua Resend': 'Sound alerts, system notifications, tab counter, email via Resend',
   'Đăng bài tự động từ Easy AI (có duyệt bài)': 'Auto-posting from Easy AI (with review)',
   'Giao diện Admin tiếng Việt / English': 'Admin interface in Vietnamese / English',

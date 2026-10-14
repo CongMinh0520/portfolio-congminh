@@ -9,7 +9,7 @@ import SeasonAdmin from './SeasonAdmin.jsx'
 import AutoPostAdmin from './AutoPostAdmin.jsx'
 import { subscribePosts, subscribeTable } from './live.js'
 import { postStatus, STATUS_PATCH, STATUS_ORDER, sortPosts, publishPatch } from './postStatus.js'
-import MessagesAdmin, { loadMessages, SetupHelp } from './MessagesAdmin.jsx'
+import MessagesAdmin, { loadMessages, isIn, SetupHelp } from './MessagesAdmin.jsx'
 import LangPage, { LangTabs, EnEditor, missingOf } from './LangAdmin.jsx'
 import AccountAdmin, { profileOf } from './AccountAdmin.jsx'
 import BrandAdmin from './BrandAdmin.jsx'
@@ -822,7 +822,7 @@ export default function Admin() {
     ...(t === 'posts' ? { autopost: { waiting: r.filter(x => x.source === 'easyai' && postStatus(x) === 'review').length } } : {}),
   }))
   const refreshCounts = (tables = Object.keys(SCHEMA)) => tables.forEach(t => loadTable(t).then(r => countOf(t, r)).catch(() => {}))
-  const refreshMessages = () => loadMessages().then(r => setCounts(c => ({ ...c, messages: { waiting: r.filter(m => !m.read).length, tip: 'tin nhắn chưa đọc' } }))).catch(() => {})
+  const refreshMessages = () => loadMessages().then(r => setCounts(c => ({ ...c, messages: { waiting: r.filter(m => isIn(m) && !m.read).length, tip: 'tin nhắn chưa đọc' } }))).catch(() => {})
   useEffect(() => { if (session) { refreshCounts(); refreshMessages() } }, [session])
 
   // Realtime bài viết: báo bài mới từ Easy AI, cập nhật số chờ duyệt và danh sách đang mở
@@ -840,7 +840,7 @@ export default function Admin() {
   useEffect(() => {
     if (!session) return
     return subscribeTable('messages', batch => {
-      batch.filter(e => e.eventType === 'INSERT' && e.new?.name)
+      batch.filter(e => e.eventType === 'INSERT' && e.new?.name && isIn(e.new)) // thư mình trả lời / ghi chú thì không báo
         .forEach(e => fire(notifyRef.current, 'message', { title: at('Tin nhắn mới từ {name}', { name: e.new.name }), body: e.new.message, toast: t => toast(t, 'mail'), onOpen: () => go('messages') }))
       refreshMessages(); setMsgLive(v => v + 1)
     })
@@ -911,7 +911,7 @@ export default function Admin() {
     }))
     // Tin nhắn: gom theo email như hộp thư
     const threads = new Map()
-    ;(found.messages || []).forEach(m => { const k = String(m.email || '').trim().toLowerCase(); const x = threads.get(k) || { k, name: m.name, email: m.email, msgs: [], unread: 0 }; x.msgs.push(m.message); if (!m.read) x.unread++; threads.set(k, x) })
+    ;(found.messages || []).forEach(m => { const k = String(m.email || '').trim().toLowerCase(); const x = threads.get(k) || { k, name: '', email: m.email, msgs: [], unread: 0 }; if (isIn(m)) { x.name ||= m.name; if (!m.read) x.unread++ } x.msgs.push(m.message); threads.set(k, x) })
     threads.forEach(x => out.push({ id: `msg:${x.k}`, kind: 'msg', table: 'messages', group: a('Tin nhắn'), icon: 'mail', title: x.name || x.email, sub: `${x.email} · ${textOf(x.msgs[0])}`, badge: x.unread ? a('{n} chưa đọc', { n: x.unread }) : undefined, text: x.msgs.join(' · '), run: () => { go('messages'); setOpenThread({ key: x.k, t: Date.now() }) } }))
     return out
   }, [searchOpen, found, adminLang])
