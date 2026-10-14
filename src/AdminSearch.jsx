@@ -1,7 +1,8 @@
-// Admin → Tìm kiếm mọi thứ (Ctrl+K / ⌘K hoặc phím /): trang, thao tác nhanh, ô cài đặt, công tắc bố cục,
-// toàn bộ nội dung (cả bản English) và tin nhắn. Kiểu bảng lệnh như cmdk / kbar nhưng tự viết, không thêm thư viện.
+// Admin → Tìm kiếm mọi thứ (Ctrl+K / ⌘K hoặc phím /): trang, phần bên trong trang (VD "Thông báo đẩy"), thao tác nhanh,
+// ô cài đặt, công tắc bố cục, toàn bộ nội dung (cả bản English) và tin nhắn. Kiểu bảng lệnh như cmdk / kbar nhưng tự viết.
 // - Gõ không dấu vẫn ra: "bai viet" khớp "Bài viết" (bỏ dấu cả câu gõ lẫn dữ liệu, giữ nguyên độ dài để tô đậm đúng chỗ)
 // - Mỗi từ gõ phải xuất hiện ở đâu đó trong mục; khớp ở tiêu đề được xếp trên khớp trong nội dung
+// - Hàng nút lọc (Tab để đổi) và gõ tắt "blog: …", "bug: …", "tin: …" để chỉ tìm một loại
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useA } from './adminLang.js'
 
@@ -31,6 +32,9 @@ function score(item, toks) {
     else if (item._x.includes(t)) s += 1
     else return 0
   }
+  // Gõ nhiều từ: mục chứa nguyên cụm (VD "thong bao day") xếp trên mục chỉ có từng từ rải rác
+  const phrase = toks.length > 1 && toks.join(' ')
+  if (phrase) s += item._t.includes(phrase) ? 5 : item._s.includes(phrase) || item._x.includes(phrase) ? 2 : 0
   return s + (item.boost || 0)
 }
 
@@ -45,6 +49,8 @@ function Hi({ text, toks }) {
 }
 // Đoạn trích quanh chỗ khớp đầu tiên trong nội dung (khi tiêu đề/mô tả không chứa từ đó)
 function snippet(item, toks) {
+  // Chỉ nội dung và tin nhắn mới có đoạn trích; trang/cài đặt giữ dòng phụ (chữ ẩn của chúng là từ khóa đồng nghĩa)
+  if (item.kind !== 'content' && item.kind !== 'msg') return ''
   const t = toks.find(x => !item._t.includes(x) && !item._s.includes(x) && item._x.includes(x))
   if (!t) return ''
   const i = item._x.indexOf(t), a = Math.max(0, i - 40)
@@ -58,46 +64,71 @@ const recent = {
 }
 export const isMac = () => typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent)
 
+// Bộ lọc dưới ô tìm: mỗi mục có kind = page | set | content | msg | act
+const FILTERS = [['all', 'Tất cả'], ['set', 'Trang & cài đặt'], ['content', 'Nội dung'], ['msg', 'Tin nhắn'], ['act', 'Thao tác']]
+const inFilter = (x, f) => f === 'all' || (f === 'set' ? x.kind === 'set' || x.kind === 'page' : x.kind === f)
+// Gõ tắt ở đầu câu để chỉ tìm một loại nội dung: "blog: playwright", "bug: 007", "tin: an"
+const PREFIXES = [[['blog', 'bai', 'post'], 'posts'], [['bug'], 'bugs'], [['du an', 'project'], 'projects'], [['ky nang', 'skill'], 'skills'],
+  [['kinh nghiem', 'job'], 'jobs'], [['tin', 'tin nhan', 'msg', 'message'], 'messages']]
+function parsePrefix(q) {
+  const m = fold(q).match(/^\s*([a-z ]+?)\s*:\s*/)
+  const hit = m && PREFIXES.find(([keys]) => keys.includes(m[1].trim()))
+  return hit ? { table: hit[1], label: q.slice(0, m[0].length).replace(/\s*:\s*$/, '').trim(), rest: q.slice(m[0].length) } : { rest: q }
+}
+
 /**
- * items: [{ id, group, icon, title, sub, text, run, boost }] — group/title/sub đã dịch sẵn
+ * items: [{ id, kind, table?, group, icon, title, sub, text, run, boost, quick }] — group/title/sub đã dịch sẵn
  * loading: đang tải nội dung (vẫn tìm được trang, cài đặt)
  */
 export default function AdminSearch({ open, onClose, items, loading, Icon }) {
   const a = useA()
-  const [q, setQ] = useState(''); const [act, setAct] = useState(0)
+  const [q, setQ] = useState(''); const [act, setAct] = useState(0); const [filter, setFilter] = useState('all')
   const listRef = useRef(null)
-  useEffect(() => { if (open) { setQ(''); setAct(0) } }, [open])
+  // Mỗi lần mở: ô trống, bộ lọc về "Tất cả" (đỡ quên là đang lọc)
+  useEffect(() => { if (open) { setQ(''); setAct(0); setFilter('all') } }, [open])
 
   const indexed = useMemo(() => items.map(it => ({ ...it, _t: fold(it.title), _s: fold(it.sub), _x: fold(it.text), text: it.text || '' })), [items])
-  const toks = useMemo(() => tokensOf(q), [q])
+  const pre = useMemo(() => parsePrefix(q), [q])
+  const toks = useMemo(() => tokensOf(pre.rest), [pre])
+  const typing = toks.length > 0 || !!pre.table
+  // Kết quả khớp chữ gõ, chưa áp bộ lọc (để đếm số trên từng nút lọc). Chưa gõ mà đang lọc → cả loại đó.
+  const hits = useMemo(() => {
+    const pool = pre.table ? indexed.filter(x => x.table === pre.table) : indexed
+    if (!toks.length) return pre.table || filter !== 'all' ? pool.map(x => ({ ...x, _sc: 1 })) : []
+    return pool.map(x => ({ ...x, _sc: score(x, toks) })).filter(x => x._sc > 0)
+  }, [indexed, toks, pre, filter])
   // Danh sách phẳng (để di chuyển bằng phím) kèm tên nhóm
   const flat = useMemo(() => {
-    if (!toks.length) {
+    if (!typing && filter === 'all') {
       const byId = new Map(indexed.map(x => [x.id, x]))
       const rec = recent.get().map(id => byId.get(id)).filter(Boolean).map(x => ({ ...x, group: a('Mở gần đây') }))
       return [...rec, ...indexed.filter(x => x.quick)]
     }
-    const hits = indexed.map(x => ({ ...x, _sc: score(x, toks) })).filter(x => x._sc > 0)
     const groups = new Map()
-    hits.forEach(x => { const g = groups.get(x.group) || []; g.push(x); groups.set(x.group, g) })
+    hits.filter(x => inFilter(x, filter)).forEach(x => { const g = groups.get(x.group) || []; g.push(x); groups.set(x.group, g) })
+    // Đang lọc một loại thì hiện nhiều hơn mỗi nhóm
+    const per = filter === 'all' && !pre.table ? 8 : 50
     return [...groups.values()]
-      .map(g => g.sort((x, y) => y._sc - x._sc).slice(0, 8))
+      .map(g => g.sort((x, y) => y._sc - x._sc).slice(0, per))
       .sort((x, y) => y[0]._sc - x[0]._sc)
       .flat()
-  }, [indexed, toks, a])
-  useEffect(() => setAct(0), [q])
+  }, [indexed, hits, typing, pre, filter, a])
+  useEffect(() => setAct(0), [q, filter])
   useEffect(() => { listRef.current?.querySelector(`[data-i="${act}"]`)?.scrollIntoView({ block: 'nearest' }) }, [act])
 
   const pick = x => { if (!x) return; recent.add(x.id); onClose(); x.run() }
+  const cycle = dir => setFilter(f => FILTERS[(FILTERS.findIndex(([k]) => k === f) + dir + FILTERS.length) % FILTERS.length][0])
   const onKey = e => {
     if (e.key === 'ArrowDown') { e.preventDefault(); setAct(i => (flat.length ? (i + 1) % flat.length : 0)) }
     else if (e.key === 'ArrowUp') { e.preventDefault(); setAct(i => (flat.length ? (i - 1 + flat.length) % flat.length : 0)) }
-    else if (e.key === 'Home' && flat.length) { e.preventDefault(); setAct(0) }
-    else if (e.key === 'End' && flat.length) { e.preventDefault(); setAct(flat.length - 1) }
+    else if (e.key === 'Tab') { e.preventDefault(); cycle(e.shiftKey ? -1 : 1) }
     else if (e.key === 'Enter') { e.preventDefault(); pick(flat[act]) }
     else if (e.key === 'Escape') { e.preventDefault(); onClose() }
   }
   if (!open) return null
+  const kbd = 'rounded border border-line px-1'
+  const empty = typing ? (loading ? a('Đang tải nội dung…') : a('Không tìm thấy kết quả cho “{q}”.', { q: q.trim() }))
+    : filter === 'all' ? a('Gõ để tìm kiếm.') : loading ? a('Đang tải nội dung…') : a('Chưa có mục nào.')
 
   return (
     <div className="fixed inset-0 z-[70] flex items-start justify-center bg-black/60 px-4 pt-[min(12vh,120px)] backdrop-blur-sm" onMouseDown={onClose}>
@@ -114,12 +145,26 @@ export default function AdminSearch({ open, onClose, items, loading, Icon }) {
           <kbd onClick={onClose} className="hidden cursor-pointer rounded border border-line px-1.5 py-0.5 text-[10px] text-muted sm:block">Esc</kbd>
         </div>
 
-        <ul id="admin-search-list" ref={listRef} role="listbox" className="min-h-0 flex-1 overflow-y-auto p-2">
-          {!flat.length && (
-            <li className="px-4 py-10 text-center text-sm text-muted">
-              {toks.length ? (loading ? a('Đang tải nội dung…') : a('Không tìm thấy kết quả cho “{q}”.', { q: q.trim() })) : a('Gõ để tìm kiếm.')}
-            </li>
+        {/* Bộ lọc: số bên cạnh = số kết quả của chữ đang gõ */}
+        <div role="tablist" aria-label={a('Lọc kết quả')} className="flex flex-wrap items-center gap-1.5 border-b border-line px-4 py-2.5">
+          {FILTERS.map(([k, l]) => {
+            const n = hits.filter(x => inFilter(x, k)).length
+            return (
+              <button key={k} type="button" role="tab" tabIndex={-1} aria-selected={filter === k} onClick={() => setFilter(k)}
+                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition ${filter === k ? 'border-purple bg-purple/15 text-white' : 'border-line text-muted hover:text-white'}`}>
+                {a(l)}{typing && <span className={`rounded-full px-1.5 text-[10px] tabular-nums ${n ? 'bg-white/10' : 'opacity-50'}`}>{n}</span>}
+              </button>
+            )
+          })}
+          {pre.table && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-pink/15 px-2.5 py-1 text-xs text-pink" title={a('Đang chỉ tìm trong một loại nội dung')}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" className="size-3" aria-hidden="true"><path d="M4 5h16l-6 7v6l-4 2v-8z" /></svg>{pre.label}:
+            </span>
           )}
+        </div>
+
+        <ul id="admin-search-list" ref={listRef} role="listbox" className="min-h-0 flex-1 overflow-y-auto p-2">
+          {!flat.length && <li className="px-4 py-10 text-center text-sm text-muted">{empty}</li>}
           {flat.map((x, i) => {
             const head = i === 0 || flat[i - 1].group !== x.group
             const snip = toks.length ? snippet(x, toks) : ''
@@ -146,22 +191,45 @@ export default function AdminSearch({ open, onClose, items, loading, Icon }) {
         </ul>
 
         <div className="hidden items-center gap-4 border-t border-line px-4 py-2.5 text-[11px] text-muted sm:flex">
-          <span><kbd className="rounded border border-line px-1">↑</kbd> <kbd className="rounded border border-line px-1">↓</kbd> {a('di chuyển')}</span>
-          <span><kbd className="rounded border border-line px-1">↵</kbd> {a('mở')}</span>
-          <span><kbd className="rounded border border-line px-1">Esc</kbd> {a('đóng')}</span>
-          <span className="ml-auto">{a('Gõ không dấu cũng được')}</span>
+          <span><kbd className={kbd}>↑</kbd> <kbd className={kbd}>↓</kbd> {a('di chuyển')}</span>
+          <span><kbd className={kbd}>Tab</kbd> {a('đổi bộ lọc')}</span>
+          <span><kbd className={kbd}>↵</kbd> {a('mở')}</span>
+          <span className="ml-auto">{a('Gõ tắt:')} <kbd className={kbd}>blog:</kbd> <kbd className={kbd}>bug:</kbd> <kbd className={kbd}>tin:</kbd></span>
         </div>
       </div>
     </div>
   )
 }
 
+const flash = el => el.animate?.([{ boxShadow: '0 0 0 3px #6650ffcc' }, { boxShadow: '0 0 0 3px #6650ff00' }], { duration: 1800, easing: 'ease-out' })
+
 /** Chờ phần tử xuất hiện (trang đang tải) rồi cuộn tới, nhấn mạnh và đặt con trỏ vào */
 export function focusWhenReady(selector, tries = 40) {
   const el = document.querySelector(selector)
   if (!el) { if (tries > 0) setTimeout(() => focusWhenReady(selector, tries - 1), 100); return }
-  el.scrollIntoView({ block: 'center', behavior: 'smooth' })
+  el.scrollIntoView({ block: 'center' })
   const target = el.matches('input, textarea, button, [tabindex]') ? el : el.querySelector('input, textarea, button, [contenteditable="true"]')
   target?.focus({ preventScroll: true })
-  el.animate?.([{ boxShadow: '0 0 0 3px #6650ffcc' }, { boxShadow: '0 0 0 3px #6650ff00' }], { duration: 1800, easing: 'ease-out' })
+  flash(el)
+}
+
+/**
+ * Tìm một phần trên trang theo chữ tiêu đề đang hiện (đã dịch), rồi cuộn tới và nhấn mạnh.
+ * Tiêu đề h2/h3 → cả khối section; dòng cài đặt (chữ in đậm) → dòng đó, đặt con trỏ vào nút/ô của dòng.
+ * Chờ một nhịp trước lần tìm đầu để trang mới kịp thay trang cũ (tránh khớp nhầm chữ trùng ở trang cũ).
+ */
+export function jumpToText(text, tries = 40, first = true) {
+  if (first) { setTimeout(() => jumpToText(text, tries, false), 120); return }
+  const want = String(text).trim()
+  // Tiêu đề có thể kèm nhãn/nút phía sau (VD "Lượt xem trang  Bản demo") → khớp phần đầu
+  const el = [...document.querySelectorAll('main h2, main h3')].find(h => h.textContent.trim() === want)
+    || [...document.querySelectorAll('main h2, main h3')].find(h => h.textContent.trim().startsWith(want))
+    || [...document.querySelectorAll('main p, main b, main label')].find(h => h.textContent.trim() === want)
+  if (!el) { if (tries > 0) setTimeout(() => jumpToText(text, tries - 1, false), 100); return }
+  const heading = /^H[23]$/.test(el.tagName)
+  const box = heading ? el.closest('section') || el : el.closest('.border-b, li, section') || el
+  box.style.scrollMarginTop = '88px' // chừa chỗ cho thanh đầu trang dính trên cùng
+  box.scrollIntoView({ block: heading ? 'start' : 'center' })
+  if (!heading) box.querySelector('input, textarea, select, button')?.focus({ preventScroll: true })
+  flash(box)
 }
