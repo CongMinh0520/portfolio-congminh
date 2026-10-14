@@ -25,7 +25,7 @@ Mọi nội dung trên trang đều chỉnh được trong trang Admin, không c
 
 - Soạn bài Blog và dự án bằng trình soạn thảo trực quan, chuyển bài giữa Đã đăng, Bản nháp và Chờ duyệt.
 - Viết bug mẫu và sửa nội dung trang Kiểm thử (điểm số, trình duyệt, checklist).
-- Nhận bài tự động từ Easy AI.
+- Nhận bài tự động từ Easy AI (cần deploy Edge Function `nhan-bai` trước, hiện chưa bật).
 - Hộp thư tin nhắn từ form Liên hệ, có thông báo khi có tin mới.
 - Thống kê lượt xem: lượt xem, người xem, bài đọc nhiều, nguồn truy cập, thiết bị.
 - Tùy chỉnh đầu trang, thương hiệu, bố cục, hiệu ứng, ngôn ngữ.

@@ -61,8 +61,20 @@
       "destination": "/api/rss?lang=en"
     },
     {
-      "source": "/((?!assets/|api/).*)",
+      "source": "/index.html",
+      "destination": "/api/page?type=home"
+    },
+    {
+      "source": "/admin",
       "destination": "/app.html"
+    },
+    {
+      "source": "/admin/:path*",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/((?!assets/|api/).*)",
+      "destination": "/api/page?type=notfound"
     }
   ]
 }
