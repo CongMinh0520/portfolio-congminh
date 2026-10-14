@@ -22,8 +22,8 @@ const ogImage = (origin, img, title, kind, date) => /^https?:\/\//i.test(img || 
 
 // Trang tĩnh: đường dẫn, tiêu đề, mô tả, chữ nhỏ trên ảnh chia sẻ (vercel.json truyền ?page=…)
 const STATIC = {
-  cv: { path: '/cv', title: 'CV', kind: 'Manual QA Tester', desc: 'CV online của Công Minh, Manual QA Tester: kỹ năng, kinh nghiệm và dự án. In hoặc lưu PDF ngay trên trình duyệt.' },
-  'kiem-thu': { path: '/kiem-thu', title: 'Mình đã test chính trang web này', kind: 'QA', desc: 'Kết quả tự kiểm thử trang web portfolio: điểm Lighthouse, trình duyệt đã test, checklist trợ năng và các bug đã tìm ra.' },
+  cv: { path: '/cv', off: 'sec_page_cv', title: 'CV', kind: 'Manual QA Tester', desc: 'CV online của Công Minh, Manual QA Tester: kỹ năng, kinh nghiệm và dự án. In hoặc lưu PDF ngay trên trình duyệt.' },
+  'kiem-thu': { path: '/kiem-thu', off: 'sec_page_selftest', title: 'Mình đã test chính trang web này', kind: 'QA', desc: 'Kết quả tự kiểm thử trang web portfolio: điểm Lighthouse, trình duyệt đã test, checklist trợ năng và các bug đã tìm ra.' },
   blog: { path: '/blog', title: 'Blog', kind: 'Blog', desc: 'Bài viết về kiểm thử phần mềm, tự động hóa và chất lượng sản phẩm.' },
 }
 
@@ -58,10 +58,13 @@ export async function GET(request) {
     const [p] = (await rest(`projects?select=id,title,description,image,category&id=eq.${id}&visible=eq.true`)) || []
     if (p) meta = { title: `${p.title} — ${SITE_NAME}`, ogTitle: p.title, desc: plain(p.description), type: 'website', image: ogImage(origin, p.image, p.title, p.category || 'Dự án'), canonical: origin + projectPath(p) }
     else status = 404
-  } else if (type === 'bug' && id) {
+  } else if (type === 'notfound') status = 404 // đường dẫn lạ (vercel.json: mọi đường dẫn chưa khớp)
+  else if (type === 'bug' && id) {
     const [b] = (await rest(`bugs?select=id,title,product,actual,image&id=eq.${id}&visible=eq.true`)) || []
     if (b) meta = { title: `${b.title} — ${SITE_NAME}`, ogTitle: b.title, desc: plain([b.product, b.actual].filter(Boolean).join(' — ')), type: 'article', image: ogImage(origin, b.image, b.title, 'Bug report'), canonical: origin + bugPath(b) }
     else status = 404
+  } else if (type === 'static' && STATIC[q.get('page')]?.off && ((await dataP)?.settings?.hidden || []).includes(STATIC[q.get('page')].off)) {
+    status = 404 // trang đã tắt trong Admin → Bố cục (client cũng hiện "Không tìm thấy", App.jsx)
   } else if (type === 'static' && STATIC[q.get('page')]) {
     // /cv, /kiem-thu, /blog: tiêu đề, mô tả, ảnh chia sẻ riêng (giống useSeo trong src/App.jsx)
     const sp = STATIC[q.get('page')]
@@ -100,6 +103,8 @@ export async function GET(request) {
     ].filter(Boolean).join('\n')
     html = html.replace(/<\/head>/i, `${tags}\n</head>`)
   }
+  // Trang không tồn tại: báo Google đừng lập chỉ mục (giao diện "Không tìm thấy" do React vẽ)
+  if (status === 404) html = html.replace(/<\/head>/i, '<meta name="robots" content="noindex">\n</head>')
   // Nhúng dữ liệu (src/useContent.js đọc thẻ này). Trình duyệt vẫn tự tải bản mới ở nền nên sửa trong Admin vẫn hiện ra.
   const data = await dataP
   if (data) html = html.replace(/<\/body>/i, `<script id="cm-data" type="application/json">${JSON.stringify(data).replace(/</g, '\\u003c')}</script>\n</body>`)

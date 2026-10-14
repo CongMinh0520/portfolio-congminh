@@ -12,7 +12,7 @@ export async function GET(request) {
   const hidden = new Set(settings?.[0]?.hidden || [])
   const urls = [
     { loc: `${origin}/`, priority: '1.0' },
-    { loc: `${origin}/blog`, priority: '0.8' },
+    ...(hidden.has('sec_blog') ? [] : [{ loc: `${origin}/blog`, priority: '0.8' }]),
     // Bài đăng lại có "bản gốc là bản chính" thì không đưa vào (Google sẽ tính cho bản gốc)
     ...(posts || []).filter(p => !(p.canonical_source && p.url)).map(p => ({ loc: origin + postPath(p), lastmod: p.published_at, priority: '0.7' })),
     ...(projects || []).map(p => ({ loc: origin + projectPath(p), priority: '0.6' })),
