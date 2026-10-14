@@ -17,6 +17,7 @@ export const SYNONYMS = {
   'Âm lượng': 'âm thanh volume tiếng chuông sound',
   'Email': 'gửi email resend mail',
   'Gửi tới': 'địa chỉ email nhận thông báo',
+  'Tên người gửi': 'sender from name resend tên hiển thị',
   'Âm thanh': 'chuông sound tiếng',
   'Thông báo trong trang': 'toast in-app',
   'Số trên tab trình duyệt': 'badge tab count đếm chưa đọc',

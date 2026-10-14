@@ -94,7 +94,7 @@ const plainFromMd = (md: string) => md
   .replace(/\s+/g, ' ').trim()
 
 /* ---------- Email báo qua Resend (bật/tắt ở Admin → Cài đặt → Thông báo) ----------
-   Secrets: RESEND_API_KEY (bắt buộc để gửi), RESEND_FROM (địa chỉ gửi), SITE_URL (nút mở Admin).
+   Secrets: RESEND_API_KEY (bắt buộc để gửi), RESEND_FROM (địa chỉ gửi; tên người gửi chỉnh ở Admin), SITE_URL (nút mở Admin).
    Thiếu khóa hoặc đang tắt thì bỏ qua, không làm hỏng việc chính. */
 const escHtml = (s: unknown) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' } as Record<string, string>)[c])
 async function sendMail(db: any, event: 'message' | 'post', m: { subject: string, heading: string, rows: [string, string][], body?: string, replyTo?: string, path: string, button: string }) {
@@ -116,10 +116,15 @@ async function sendMail(db: any, event: 'message' | 'post', m: { subject: string
 ${m.body ? `<div style="white-space:pre-wrap;font-size:15px;line-height:1.6;background:#f3f4f6;border-radius:10px;padding:14px 16px;margin-bottom:20px">${escHtml(m.body)}</div>` : ''}
 ${site ? `<a href="${escHtml(site + m.path)}" style="display:inline-block;background:#6650ff;color:#fff;text-decoration:none;font-weight:bold;padding:10px 18px;border-radius:8px">${escHtml(m.button)}</a>` : ''}
 <p style="margin-top:24px;font-size:12px;color:#9ca3af">Email tự động từ web portfolio. Tắt ở Admin → Cài đặt → Thông báo.</p></div>`
+    // Tên người gửi chỉnh ở Admin; RESEND_FROM chỉ cần địa chỉ (có sẵn "Tên <địa chỉ>" thì tên ở Admin được ưu tiên)
+    const base = (Deno.env.get('RESEND_FROM') || 'onboarding@resend.dev').trim()
+    const addr = base.match(/<([^>]+)>/)?.[1] || base
+    const fromName = String(n.email_from_name || '').replace(/[<>"\r\n]/g, '').trim().slice(0, 60)
+    const from = fromName ? `"${fromName}" <${addr}>` : base
     const r = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: Deno.env.get('RESEND_FROM') || 'onboarding@resend.dev', to: [to], subject: m.subject, html, ...(m.replyTo ? { reply_to: m.replyTo } : {}) }),
+      body: JSON.stringify({ from, to: [to], subject: m.subject, html, ...(m.replyTo ? { reply_to: m.replyTo } : {}) }),
       signal: AbortSignal.timeout(8000),
     })
     if (!r.ok) console.error('Resend', r.status, await r.text().catch(() => ''))
