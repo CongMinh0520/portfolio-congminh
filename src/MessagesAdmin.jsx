@@ -105,11 +105,13 @@ export function SetupHelp() {
   )
 }
 
-export default function MessagesAdmin({ toast, live, onChanged }) {
+export default function MessagesAdmin({ toast, live, onChanged, openThread }) {
   const a = useA()
   const [rows, setRows] = useState(null); const [err, setErr] = useState('')
   const [onlyUnread, setOnlyUnread] = useState(false); const [q, setQ] = useState('')
   const [openKey, setOpenKey] = useState(null)
+  // Mở thẳng một hội thoại (chọn từ ô Tìm kiếm)
+  useEffect(() => { if (openThread) setOpenKey(openThread.key) }, [openThread])
   const end = useRef(null)
   const reload = () => loadMessages().then(r => { setRows(r); setErr('') }).catch(e => { setRows([]); setErr(e.message || String(e)) })
   useEffect(() => { reload() }, [live])

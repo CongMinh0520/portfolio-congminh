@@ -30,6 +30,7 @@ import { BugReport, BugBadges, SEVERITIES, PRIORITIES, STATUSES } from './Bugs.j
 import SelfTestAdmin from './SelfTestAdmin.jsx'
 import { mergeHero, DEFAULT_HERO } from './HeroVisual.jsx'
 import { autoCover, coverOf, newSeed } from './autoArt.js'
+import AdminSearch, { focusWhenReady, textOf, isMac } from './AdminSearch.jsx'
 
 /* ---------------- Cấu hình nội dung ---------------- */
 const SCHEMA = {
@@ -326,7 +327,7 @@ function StatusSwitch({ r, onPick }) {
 }
 const StatusTag = ({ st }) => <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${STATUS_UI[st][1]}`}><i className={`size-1.5 rounded-full ${STATUS_UI[st][2]}`} />{at(STATUS_UI[st][0])}</span>
 
-function Manager({ table, toast, openNew, onChanged, live }) {
+function Manager({ table, toast, openNew, openId, onChanged, live }) {
   const a = useA()
   const cfg = SCHEMA[table]
   const [rows, setRows] = useState(null); const [q, setQ] = useState('')
@@ -343,6 +344,8 @@ function Manager({ table, toast, openNew, onChanged, live }) {
   // Realtime: bảng Blog tự cập nhật khi có thay đổi (không đếm lại các bảng khác)
   useEffect(() => { if (live && table === 'posts') loadTable(table).then(setRows).catch(() => {}) }, [live])
   useEffect(() => { if (openNew && rows) newItem() }, [openNew, rows === null])
+  // Mở thẳng một mục (chọn từ ô Tìm kiếm)
+  useEffect(() => { const r = openId && rows?.find(x => x.id === openId.id); if (r) setForm(r) }, [openId, rows === null])
 
   // Bài blog mới mặc định là bản nháp và lên đầu danh sách
   const newItem = () => setForm(isPosts
@@ -681,7 +684,7 @@ function LayoutForm({ toast }) {
                 const on = !hidden.has(k)
                 const parentOff = k.startsWith('sec_footer_') && hidden.has('sec_footer')
                 return (
-                  <li key={k} className="flex items-center justify-between gap-4 border-b border-line px-5 py-3.5 last:border-0">
+                  <li key={k} id={`lay-${k}`} className="flex items-center justify-between gap-4 border-b border-line px-5 py-3.5 last:border-0">
                     <span className={`flex min-w-0 items-center gap-3 text-sm ${on && !parentOff ? '' : 'text-muted'}`}>
                       <span className={on && !parentOff ? 'text-[#b5aaff]' : 'text-[#5d6180]'}><Icon name={on ? 'eye' : 'eyeOff'} className="size-4" /></span>
                       <span className="min-w-0">{a(lab)}{parentOff && <span className="block text-xs text-muted">{a('Đang ẩn theo “Toàn bộ footer”')}</span>}</span>
@@ -845,7 +848,67 @@ export default function Admin() {
     const id = Math.random(); setToasts(t => [...t, { id, text, kind }])
     setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), kind === 'mail' ? 6000 : 2600)
   }
-  const go = (k, add) => { if (k !== page) navigate(adminPath(k)); setDrawer(false); setOpenNew(add ? Date.now() : 0) }
+  const [openId, setOpenId] = useState(null); const [openThread, setOpenThread] = useState(null)
+  const go = (k, add, id) => { if (k !== page) navigate(adminPath(k)); setDrawer(false); setOpenNew(add ? Date.now() : 0); setOpenId(id != null ? { id, t: Date.now() } : null) }
+
+  // Tìm kiếm mọi thứ: Ctrl+K / ⌘K, hoặc phím / khi không gõ trong ô nào
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [found, setFound] = useState({}); const [searchLoading, setSearchLoading] = useState(false)
+  useEffect(() => {
+    if (!session) return
+    const onKey = e => {
+      const typing = e.target.closest?.('input, textarea, select, [contenteditable="true"]')
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setSearchOpen(v => !v) }
+      else if (e.key === '/' && !typing && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); setSearchOpen(true) }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [session])
+  // Mỗi lần mở: tải lại nội dung ở nền (vẫn tìm ngay trên bản lần trước)
+  useEffect(() => {
+    if (!searchOpen) return
+    setSearchLoading(true)
+    const jobs = [...Object.keys(SCHEMA).map(t => loadTable(t).then(r => [t, r])), loadMessages().then(r => ['messages', r]), loadSettings().then(r => ['settings', r])]
+    Promise.allSettled(jobs).then(res => {
+      setFound(f => ({ ...f, ...Object.fromEntries(res.filter(r => r.status === 'fulfilled').map(r => r.value)) }))
+      setSearchLoading(false)
+    })
+  }, [searchOpen])
+  const searchItems = useMemo(() => {
+    if (!searchOpen) return []
+    const out = []
+    // Trang trong Admin (tìm được cả tên tiếng Việt lẫn English)
+    NAV.forEach(([, list]) => list.forEach(([k, l, icon]) => out.push({ id: `page:${k}`, group: a('Trang'), icon, title: a(l), sub: `/admin${ADMIN_SLUGS[k] ? '/' + ADMIN_SLUGS[k] : ''}`, text: l, quick: true, boost: 1, run: () => go(k) })))
+    out.push({ id: 'page:account', group: a('Trang'), icon: 'badge', title: a('Tài khoản của tôi'), sub: '/admin/tai-khoan', text: 'Tài khoản của tôi mật khẩu ảnh đại diện', boost: 1, run: () => go('account') })
+    // Thao tác nhanh
+    ;[['new-project', 'Thêm dự án', 'plus', () => go('projects', true)], ['new-post', 'Viết bài blog', 'plus', () => go('posts', true)],
+      ['new-bug', 'Thêm bug mẫu', 'plus', () => go('bugs', true)], ['new-skill', 'Thêm kỹ năng', 'plus', () => go('skills', true)],
+      ['new-job', 'Thêm kinh nghiệm', 'plus', () => go('jobs', true)], ['view-site', 'Xem trang', 'external', () => navigate('/')],
+      ['lang', adminLang === 'en' ? 'Chuyển Admin sang Tiếng Việt' : 'Chuyển Admin sang English', 'globe', () => setAdminLang(adminLang === 'en' ? 'vi' : 'en')],
+      ['logout', 'Đăng xuất', 'logout', () => supabase.auth.signOut()],
+    ].forEach(([id, l, icon, run]) => out.push({ id: `act:${id}`, group: a('Thao tác'), icon, title: a(l), text: l, quick: id.startsWith('new-p'), run }))
+    // Ô trong Thông tin chung (kèm giá trị đang lưu) và khối kêu gọi cuối bài
+    const st = found.settings || {}
+    SETTINGS_GROUPS.forEach(([g, , fields]) => fields.forEach(([k, l]) => out.push({ id: `set:${k}`, group: a('Cài đặt'), icon: 'sliders', title: a(l), sub: `${a('Thông tin chung')} › ${a(g)}${st[k] ? ' · ' + textOf(st[k]) : ''}`, text: `${l} ${g} ${textOf(st[k])} ${textOf(st.en?.[k])}`, run: () => { go('settings'); focusWhenReady(`#s-${k}`) } })))
+    const cta = mergeHero(st.hero).post_cta
+    ;[['title', 'Tiêu đề'], ['text', 'Mô tả ngắn'], ['button', 'Chữ trên nút'], ['link', 'Nút dẫn tới']].forEach(([k, l]) => out.push({ id: `cta:${k}`, group: a('Cài đặt'), icon: 'sliders', title: `${a('Khối kêu gọi cuối bài viết')} › ${a(l)}`, sub: textOf(cta?.[k]), text: `${l} kêu gọi cuối bài CTA ${textOf(cta?.[k])}`, run: () => { go('settings'); focusWhenReady(`#cta-${k}`) } }))
+    // Công tắc ẩn/hiện từng phần trang chủ
+    const hidden = new Set(st.hidden || [])
+    SECTIONS.forEach(([g, , list]) => list.forEach(([k, l]) => out.push({ id: `lay:${k}`, group: a('Bố cục trang chủ'), icon: hidden.has(k) ? 'eyeOff' : 'eye', title: a(l), sub: a(g), badge: hidden.has(k) ? a('Đang ẩn') : undefined, text: `${l} ${g} ẩn hiện`, run: () => { go('layout'); focusWhenReady(`#lay-${k}`) } })))
+    // Nội dung: mọi trường chữ + bản English
+    Object.entries(SCHEMA).forEach(([t, cfg]) => (found[t] || []).forEach(r => {
+      const body = cfg.fields.filter(([, , type]) => !['cover', 'shot', 'select', 'check'].includes(type)).map(([k]) => textOf(r[k])).join(' · ')
+      const sub = t === 'posts' ? `${a(STATUS_UI[postStatus(r)][0])}${r.published_at ? ' · ' + fmtDay(r.published_at) : ''}${r.excerpt ? ' · ' + textOf(r.excerpt) : ''}`
+        : t === 'bugs' ? `${bugCode(r)} · ${textOf(r.product)}` : textOf(r[cfg.sub])
+      out.push({ id: `${t}:${r.id}`, group: a(cfg.label), icon: cfg.icon, emoji: t === 'skills' ? r.icon : undefined, title: textOf(r[cfg.title]) || a('(chưa có tiêu đề)'), sub,
+        badge: t !== 'posts' && r.visible === false ? a('Đang ẩn') : undefined, text: `${body} ${textOf(r.en)} ${t === 'bugs' ? bugCode(r) : ''}`, run: () => go(t, false, r.id) })
+    }))
+    // Tin nhắn: gom theo email như hộp thư
+    const threads = new Map()
+    ;(found.messages || []).forEach(m => { const k = String(m.email || '').trim().toLowerCase(); const x = threads.get(k) || { k, name: m.name, email: m.email, msgs: [], unread: 0 }; x.msgs.push(m.message); if (!m.read) x.unread++; threads.set(k, x) })
+    threads.forEach(x => out.push({ id: `msg:${x.k}`, group: a('Tin nhắn'), icon: 'mail', title: x.name || x.email, sub: `${x.email} · ${textOf(x.msgs[0])}`, badge: x.unread ? a('{n} chưa đọc', { n: x.unread }) : undefined, text: x.msgs.join(' · '), run: () => { go('messages'); setOpenThread({ key: x.k, t: Date.now() }) } }))
+    return out
+  }, [searchOpen, found, adminLang])
   // Số trên tab trình duyệt: tin chưa đọc + bài chờ duyệt (tùy cài đặt Thông báo)
   const tabN = (notify.events.message.tab ? counts.messages?.waiting || 0 : 0) + (notify.events.post.tab ? counts.posts?.waiting || 0 : 0)
   useEffect(() => { setTabCount(session ? tabN : 0, session ? `${at(TITLES[page]) || 'Admin'} — Admin` : `${at('Đăng nhập')} — Admin`) }, [tabN, page, session, adminLang])
@@ -932,6 +995,12 @@ export default function Admin() {
               {page === 'messages' && <SetupHelp />}
             </div>
           </div>
+          <button onClick={() => setSearchOpen(true)} aria-label={a('Tìm kiếm')} aria-keyshortcuts={isMac() ? 'Meta+K' : 'Control+K'}
+            className="ml-auto flex flex-none items-center gap-2 rounded-lg text-muted transition hover:text-white sm:w-[260px] sm:border sm:border-line sm:bg-[#0b0d16] sm:px-3 sm:py-2 sm:hover:border-[#3a3f5a]">
+            <span className={`${iconBtn} sm:size-auto sm:hover:bg-transparent`}><Icon name="search" className="size-4" /></span>
+            <span className="hidden flex-1 text-left text-sm sm:block">{a('Tìm kiếm…')}</span>
+            <kbd className="hidden rounded border border-line px-1.5 py-0.5 text-[10px] sm:block">{isMac() ? '⌘K' : 'Ctrl K'}</kbd>
+          </button>
         </header>
 
         <main className="mx-auto w-full max-w-[1280px] flex-1 px-4 py-6 sm:px-6 sm:py-8">
@@ -946,13 +1015,15 @@ export default function Admin() {
           {page === 'notify' && <NotifyAdmin toast={toast} onSaved={setNotify} />}
           {page === 'brand' && <BrandAdmin toast={toast} onSaved={setBrand} />}
           {page === 'account' && <AccountAdmin session={session} toast={toast} />}
-          {page === 'messages' && <MessagesAdmin toast={toast} live={msgLive} onChanged={refreshMessages} />}
+          {page === 'messages' && <MessagesAdmin toast={toast} live={msgLive} onChanged={refreshMessages} openThread={openThread} />}
           {page === 'autopost' && <AutoPostAdmin toast={toast} go={go} live={live} />}
           {page === 'version' && <VersionAdmin />}
           {page === 'backup' && <BackupAdmin toast={toast} onChanged={() => { refreshCounts(); refreshMessages() }} />}
-          {SCHEMA[page] && <Manager key={page} table={page} toast={toast} openNew={openNew} onChanged={refreshCounts} live={live} />}
+          {SCHEMA[page] && <Manager key={page} table={page} toast={toast} openNew={openNew} openId={openId} onChanged={refreshCounts} live={live} />}
         </main>
       </div>
+
+      <AdminSearch open={searchOpen} onClose={() => setSearchOpen(false)} items={searchItems} loading={searchLoading} Icon={Icon} />
 
       {/* Toasts */}
       <div className="pointer-events-none fixed left-1/2 top-[calc(72px+env(safe-area-inset-top,0px))] z-[60] flex -translate-x-1/2 flex-col items-center gap-2" aria-live="polite">
