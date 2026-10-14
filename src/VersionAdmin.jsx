@@ -12,6 +12,17 @@ const HASH = Boolean(import.meta.env.VITE_HASH_ROUTER)
 
 // Lịch sử phiên bản: mới nhất ở trên
 const CHANGELOG = [
+  { version: '1.2.0', date: '2026-10-14', items: [
+    'Bug mẫu: danh sách bug kèm trang chi tiết (mức độ, ưu tiên, các bước tái hiện, bằng chứng), quản lý trong Admin.',
+    'Trang Kiểm thử web (/kiem-thu): kết quả tự kiểm thử chính web này, có điểm Lighthouse làm bằng chứng.',
+    'CV online (/cv) và RSS cho Blog (/rss.xml).',
+    'Bố cục trang chủ: công tắc bật/tắt nút CV, dòng Kiểm thử và link RSS.',
+    'Admin: tìm kiếm mọi thứ bằng Ctrl+K / ⌘K hoặc phím /, tìm tới cả từng phần trong trang, có bộ lọc và gõ tắt.',
+    'Thông báo: chỉnh tên người gửi email (Resend).',
+    'Trang chủ hiện ngay nhờ nhúng sẵn dữ liệu vào HTML; gộp request Supabase, cache tài nguyên, hiệu ứng nhẹ hơn.',
+    'Đường dẫn không tồn tại hoặc trang đã tắt trả đúng mã 404; sitemap bỏ /blog khi tắt mục Blog.',
+    'Tự tải lại trang khi file JS lỗi sau deploy mới thay vì để trống trang; sửa các lỗi tìm được khi kiểm thử.',
+  ] },
   { version: '1.1.0', date: '2026-10-12', items: [
     'Nút Tải CV (PDF, có bản tiếng Anh) ở đầu trang và footer.',
     'Sao lưu toàn bộ nội dung về 1 file và khôi phục an toàn (không xóa gì).',
@@ -31,10 +42,10 @@ const CHANGELOG = [
 
 // Tính năng hiện có, chia theo nhóm
 const FEATURES = [
-  ['Trang chủ', ['Đầu trang, Kỹ năng, Kinh nghiệm, Dự án, Blog, Liên hệ; ẩn/hiện từng phần', 'Hiệu ứng con trỏ, hiệu ứng theo mùa (tuyết, hoa mai, hoa đào, pháo hoa)', 'Nút đổi ngôn ngữ VI | EN, trang 404 riêng', 'Nút Tải CV (PDF) ở đầu trang và footer', 'Form Liên hệ có Cloudflare Turnstile chống spam']],
+  ['Trang chủ', ['Đầu trang, Kỹ năng, Kinh nghiệm, Dự án, Blog, Liên hệ; ẩn/hiện từng phần', 'Hiệu ứng con trỏ, hiệu ứng theo mùa (tuyết, hoa mai, hoa đào, pháo hoa)', 'Nút đổi ngôn ngữ VI | EN, trang 404 riêng', 'Nút Tải CV (PDF) ở đầu trang và footer, CV online (/cv)', 'Bug mẫu và trang Kiểm thử web (kết quả tự kiểm thử, điểm Lighthouse)', 'Form Liên hệ có Cloudflare Turnstile chống spam']],
   ['Blog', ['Bài viết Markdown có ảnh, mục lục, thời gian đọc, thẻ, bài liên quan', 'Phân trang 9 bài/trang, lọc theo thẻ, tự xếp theo ngày đăng', 'Ba trạng thái: Bản nháp, Chờ duyệt, Đã đăng', 'Bản tiếng Anh cho từng bài; bài đăng lại có thể trỏ bản chính về link gốc']],
-  ['Admin', ['Đăng nhập bằng Supabase Auth, trang Tài khoản của tôi (tên, ảnh, email, mật khẩu)', 'Hộp thư tin nhắn dạng hội thoại, trả lời qua email', 'Thông báo âm thanh, thông báo hệ thống, số trên tab, email qua Resend', 'Đăng bài tự động từ Easy AI (có duyệt bài)', 'Giao diện Admin tiếng Việt / English', 'Dashboard lượt xem: lượt xem, người xem, bài xem nhiều, nguồn khách, thiết bị, ngôn ngữ', 'Thông báo đẩy tới điện thoại / máy tính', 'Sao lưu và khôi phục nội dung']],
-  ['SEO & chia sẻ', ['Link đẹp theo tên bài (/blog/ten-bai-12)', 'sitemap.xml, robots.txt, thẻ canonical, dữ liệu có cấu trúc (JSON-LD)', 'Ảnh xem trước khi chia sẻ link lên Facebook / Zalo (cả trang chủ)', 'Trang Admin và trang 404 không cho Google lập chỉ mục']],
+  ['Admin', ['Đăng nhập bằng Supabase Auth, trang Tài khoản của tôi (tên, ảnh, email, mật khẩu)', 'Hộp thư tin nhắn dạng hội thoại, trả lời qua email', 'Thông báo âm thanh, thông báo hệ thống, số trên tab, email qua Resend', 'Đăng bài tự động từ Easy AI (có duyệt bài)', 'Giao diện Admin tiếng Việt / English', 'Dashboard lượt xem: lượt xem, người xem, bài xem nhiều, nguồn khách, thiết bị, ngôn ngữ', 'Thông báo đẩy tới điện thoại / máy tính', 'Sao lưu và khôi phục nội dung', 'Tìm kiếm nhanh Ctrl+K / ⌘K hoặc phím /']],
+  ['SEO & chia sẻ', ['Link đẹp theo tên bài (/blog/ten-bai-12)', 'sitemap.xml, robots.txt, RSS (/rss.xml), thẻ canonical, dữ liệu có cấu trúc (JSON-LD)', 'Ảnh xem trước khi chia sẻ link lên Facebook / Zalo (cả trang chủ)', 'Trang Admin và trang 404 không cho Google lập chỉ mục']],
 ]
 
 // Công nghệ: [tên, gói npm để lấy phiên bản (nếu có), dùng để làm gì]
