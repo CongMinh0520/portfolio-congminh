@@ -13,6 +13,7 @@ export const SYSTEM_MODES = [['off', 'Tắt'], ['hidden', 'Khi đang ở tab kh�
 
 export const DEFAULT_NOTIFY = {
   email_to: '',
+  email_from_name: '',
   volume: 70,
   events: {
     message: { toast: true, sound: 'chime', system: 'hidden', tab: true, email: true, push: true },

@@ -59,7 +59,7 @@ function EmailHelp() {
             {step(1, a('Tạo tài khoản Resend'), <p>{a('Đăng ký ở')} <b>resend.com</b> {a('(có gói miễn phí).')}</p>)}
             {step(2, a('Chọn địa chỉ gửi'), <><p><b>{a('Có tên miền:')}</b> {a('Domains → Add domain → thêm các bản ghi DNS Resend đưa → chờ Verified. Gửi từ địa chỉ như thongbao@tenmien.')}</p><p><b>{a('Chưa có tên miền:')}</b> {a('dùng địa chỉ thử onboarding@resend.dev; địa chỉ này chỉ gửi được tới email bạn dùng đăng ký Resend.')}</p></>)}
             {step(3, a('Tạo khóa API'), <p>{a('API Keys → Create API Key → chép khóa (bắt đầu bằng re_).')}</p>)}
-            {step(4, a('Lưu vào Supabase'), <><p>{a('Edge Functions → Secrets, thêm:')}</p><Value>RESEND_API_KEY</Value><p className="-mt-1 text-xs text-muted">{a('Giá trị: khóa ở bước 3.')}</p><Value>RESEND_FROM</Value><p className="-mt-1 text-xs text-muted">{a('VD: Công Minh <thongbao@congminh.dev> hoặc onboarding@resend.dev')}</p><Value>SITE_URL</Value><p className="-mt-1 text-xs text-muted">{a('Địa chỉ web, để email có nút mở Admin (đã có nếu làm Easy AI).')}</p></>)}
+            {step(4, a('Lưu vào Supabase'), <><p>{a('Edge Functions → Secrets, thêm:')}</p><Value>RESEND_API_KEY</Value><p className="-mt-1 text-xs text-muted">{a('Giá trị: khóa ở bước 3.')}</p><Value>RESEND_FROM</Value><p className="-mt-1 text-xs text-muted">{a('VD: thongbao@congminh.dev hoặc onboarding@resend.dev. Tên người gửi chỉnh ở ô "Tên người gửi".')}</p><Value>SITE_URL</Value><p className="-mt-1 text-xs text-muted">{a('Địa chỉ web, để email có nút mở Admin (đã có nếu làm Easy AI).')}</p></>)}
             {step(5, a('Cập nhật 2 hàm'), <><p>{a('Edge Functions → mở từng hàm → thay mã bằng bản mới → Deploy:')}</p><div className="flex flex-wrap gap-2"><Copy text={FN_MSG} label={a('Chép mã gui-tin-nhan')} /><Copy text={FN_POST} label={a('Chép mã nhan-bai')} /></div></>)}
             {step(6, a('Gửi thử'), <p>{a('Gửi một form Liên hệ trên trang chủ, email báo sẽ tới địa chỉ ở ô "Gửi tới".')}</p>)}
           </ol>
@@ -85,10 +85,10 @@ export default function NotifyAdmin({ toast, onSaved }) {
   const save = async () => {
     if (cfg.email_to && !EMAIL_RE.test(cfg.email_to.trim())) return setErrEmail(a('Email chưa đúng định dạng.'))
     setErrEmail(''); setBusy(true)
-    const next = { ...cfg, email_to: cfg.email_to.trim() }
+    const next = { ...cfg, email_to: cfg.email_to.trim(), email_from_name: cfg.email_from_name.replace(/[<>"]/g, '').trim() }
     const { error } = await supabase.from('admin_settings').upsert({ id: 1, notify: next })
     setBusy(false); if (error) return toast(a('{msg}. Đã chạy supabase/migration-thong-bao-seo.sql chưa?', { msg: error.message }), 'error')
-    setDirty(false); onSaved?.(next); toast(a('Đã lưu cài đặt thông báo'))
+    setCfg(next); setDirty(false); onSaved?.(next); toast(a('Đã lưu cài đặt thông báo'))
   }
   const allow = async () => { const p = await askPermission(); setPerm(p); if (p === 'denied') toast(a('Trình duyệt đang chặn thông báo. Mở biểu tượng ổ khóa cạnh thanh địa chỉ để cho phép.'), 'error') }
   const test = k => {
@@ -119,6 +119,11 @@ export default function NotifyAdmin({ toast, onSaved }) {
           <div className="w-full sm:w-72">
             <input type="email" aria-label={a('Email nhận thông báo')} className={input} value={cfg.email_to} placeholder={ownerEmail || 'ban@gmail.com'} onChange={e => { set({ email_to: e.target.value }); setErrEmail('') }} />
             {errEmail && <p className="mt-1 text-xs text-red-300">{errEmail}</p>}
+          </div>
+        </Row>
+        <Row title={a('Tên người gửi')} hint={a('Tên hiện trong hộp thư thay cho địa chỉ gửi. Để trống = dùng RESEND_FROM.')}>
+          <div className="w-full sm:w-72">
+            <input type="text" maxLength={60} aria-label={a('Tên người gửi')} className={input} value={cfg.email_from_name} placeholder="Công Minh Portfolio" onChange={e => set({ email_from_name: e.target.value })} />
           </div>
         </Row>
         {demoMode && <p className="px-5 pb-4 text-xs text-[#f8d27c]">{a('Bản demo không gửi email thật. Bấm nút "?" để xem cách bật khi đưa web lên.')}</p>}
