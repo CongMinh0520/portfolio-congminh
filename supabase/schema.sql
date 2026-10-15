@@ -371,6 +371,11 @@ create policy "admin all" on public.push_subscriptions for all to authenticated 
 -- ===== Bug mẫu, trang Kiểm thử, CV online =====
 -- Bảng bugs, cột settings.selftest, hàm get_home và 3 bug mẫu nằm ở supabase/migration-qa.sql: cài mới thì chạy thêm file đó sau file này.
 
+-- ===== Khoá quyền Admin (BẮT BUỘC, chạy CUỐI CÙNG) =====
+-- Các policy "admin write" / "admin all" ở trên cho MỌI tài khoản đã đăng nhập quyền ghi.
+-- Sau khi tạo tài khoản Admin (Authentication → Users) và chạy migration-qa.sql,
+-- chạy supabase/migration-admin-lockdown.sql để chỉ tài khoản Admin mới được ghi / đọc tin nhắn / khôi phục sao lưu.
+
 -- ===== Nội dung mẫu (Manual QA Tester) — chỉ dùng khi cài mới; sửa / xóa trong Admin =====
 insert into public.skills (sort, icon, title, description, tags, en) values
  (1, $c$🔍$c$, $c$Manual Testing$c$, $c$Đọc hiểu yêu cầu, viết test case và checklist, test chức năng, giao diện, regression và hỗ trợ UAT trước khi phát hành.$c$, ARRAY[$c$Test case$c$, $c$Exploratory$c$, $c$Regression$c$, $c$UAT$c$]::text[], $c${"title":"Manual Testing","description":"Analysing requirements, writing test cases and checklists, testing functionality, UI and regression, and supporting UAT before release.","tags":["Test cases","Exploratory","Regression","UAT"]}$c$::jsonb),

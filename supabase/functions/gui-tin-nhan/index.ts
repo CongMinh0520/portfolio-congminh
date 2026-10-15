@@ -8,14 +8,22 @@
 
 import { createClient } from 'npm:@supabase/supabase-js@2.49.4'
 
-const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+// Chỉ trang web của bạn (SITE_URL) gọi được hàm này từ trình duyệt. Thêm nguồn khác (VD http://localhost:5173 khi chạy thử)
+// bằng secret ALLOWED_ORIGINS, cách nhau dấu phẩy. Chưa đặt SITE_URL thì vẫn mở cho mọi nguồn như trước.
+function corsFor(req: Request) {
+  const allowed = [Deno.env.get('SITE_URL'), ...(Deno.env.get('ALLOWED_ORIGINS') || '').split(',')]
+    .map(u => { try { return u ? new URL(u.trim()).origin : '' } catch { return '' } }).filter(Boolean)
+  const origin = req.headers.get('Origin') || ''
+  return {
+    'Access-Control-Allow-Origin': !allowed.length ? '*' : allowed.includes(origin) ? origin : allowed[0],
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Vary': 'Origin',
+  }
 }
 // `code` để trang hiện lỗi đúng ngôn ngữ khách đang xem; `error` là câu tiếng Việt dự phòng
 const json = (status: number, data: unknown) =>
-  new Response(JSON.stringify(data), { status, headers: { ...CORS, 'Content-Type': 'application/json' } })
+  new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } })
 
 /* ---------- Email báo qua Resend (bật/tắt ở Admin → Cài đặt → Thông báo) ----------
    Secrets: RESEND_API_KEY (bắt buộc để gửi), RESEND_FROM (địa chỉ gửi; tên người gửi chỉnh ở Admin), SITE_URL (nút mở Admin).
@@ -212,7 +220,14 @@ async function sendPush(db: any, event: 'message' | 'post' | 'test', p: { title:
 }
 
 Deno.serve(async req => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
+  const cors = corsFor(req)
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
+  const res = await handle(req)
+  for (const [k, v] of Object.entries(cors)) res.headers.set(k, v)
+  return res
+})
+
+async function handle(req: Request): Promise<Response> {
   if (req.method !== 'POST') return json(405, { code: 'method', error: 'Chỉ nhận POST' })
 
   let b: any
@@ -225,6 +240,9 @@ Deno.serve(async req => {
     const token = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '')
     const { data: u } = await db.auth.getUser(token).catch(() => ({ data: null }))
     if (!u?.user) return json(401, { code: 'auth', error: 'Cần đăng nhập Admin.' })
+    // Đăng nhập thôi chưa đủ: phải có trong bảng admins (supabase/migration-admin-lockdown.sql)
+    const { data: adm } = await db.from('admins').select('user_id').eq('user_id', u.user.id).maybeSingle()
+    if (!adm) return json(403, { code: 'forbidden', error: 'Tài khoản này không có quyền Admin.' })
     if (b.action === 'reply') { const r = await sendReply(db, b); return json(r.status, r.data) }
     if (b.action === 'draft') { const r = await draftReply(db, b); return json(r.status, r.data) }
     return json(200, await sendPush(db, 'test', { title: 'Thông báo thử từ Admin', body: 'Thông báo đẩy đã chạy trên thiết bị này.', path: '/admin/thong-bao' }))
@@ -261,4 +279,4 @@ Deno.serve(async req => {
   })
   await sendPush(db, 'message', { title: `Tin nhắn mới từ ${name}`, body: message, path: '/admin/tin-nhan' })
   return json(200, { ok: true })
-})
+}
