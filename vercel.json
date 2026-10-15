@@ -1,4 +1,5 @@
 {
+  "cleanUrls": true,
   "functions": {
     "api/page.js": {
       "includeFiles": "dist/*.html"
@@ -46,18 +47,6 @@
   ],
   "rewrites": [
     {
-      "source": "/",
-      "destination": "/api/page?type=home"
-    },
-    {
-      "source": "/sitemap.xml",
-      "destination": "/api/sitemap"
-    },
-    {
-      "source": "/robots.txt",
-      "destination": "/api/robots"
-    },
-    {
       "source": "/blog/:slug",
       "destination": "/api/page?type=post&slug=:slug"
     },
@@ -66,32 +55,8 @@
       "destination": "/api/page?type=project&slug=:slug"
     },
     {
-      "source": "/blog",
-      "destination": "/api/page?type=static&page=blog"
-    },
-    {
-      "source": "/cv",
-      "destination": "/api/page?type=static&page=cv"
-    },
-    {
-      "source": "/kiem-thu",
-      "destination": "/api/page?type=static&page=kiem-thu"
-    },
-    {
       "source": "/bug/:slug",
       "destination": "/api/page?type=bug&slug=:slug"
-    },
-    {
-      "source": "/rss.xml",
-      "destination": "/api/rss"
-    },
-    {
-      "source": "/rss-en.xml",
-      "destination": "/api/rss?lang=en"
-    },
-    {
-      "source": "/index.html",
-      "destination": "/api/page?type=home"
     },
     {
       "source": "/admin",

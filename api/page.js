@@ -1,6 +1,6 @@
-// Trang chi tiết bài Blog / Dự án: chèn sẵn tiêu đề, mô tả, ảnh chia sẻ vào HTML
-// để Facebook, Zalo, Google đọc được ngay mà không cần chạy JavaScript. Giao diện vẫn là trang React như cũ.
-// Mọi trang đi qua hàm này (kể cả type=static: /blog, /cv, /kiem-thu) đều được nhúng sẵn dữ liệu trang chủ.
+// Trang dựng lúc chạy (dự phòng): trang chủ, bài, dự án, bug, trang tĩnh đã được scripts/prerender.mjs ghi sẵn thành file HTML.
+// Hàm này chỉ chạy khi đường dẫn chưa có file: bài / dự án / bug mới thêm sau lần build, slug cũ, đường dẫn lạ (404).
+// Chèn sẵn tiêu đề, mô tả, ảnh chia sẻ và dữ liệu trang chủ vào HTML giống bản dựng sẵn (cùng module render/).
 import { rest, homeData, originOf, idFromSlug } from './_lib.js'
 import { STATIC, homeMeta, postMeta, projectMeta, bugMeta, staticMeta, renderPage } from '../render/page.js'
 
