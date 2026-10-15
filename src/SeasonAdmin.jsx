@@ -1,9 +1,7 @@
 // Admin → Hiệu ứng theo mùa: tuyết, hoa mai, hoa đào, pháo hoa; bật tay hoặc tự động theo ngày.
-import { useEffect, useState } from 'react'
-import { supabase } from './supabase.js'
-import { DEMO_SETTINGS } from './siteBase.js'
-import { loadSettings } from './useContent.js'
-import { mergeHero, DEFAULT_HERO } from './HeroVisual.jsx'
+import { useState } from 'react'
+import { useSettingsRow, LoadError } from './settingsRow.jsx'
+import { mergeHero } from './HeroVisual.jsx'
 import SeasonFX, { SEASON_EFFECTS, SEASON_NAME, AMOUNTS, activeSeason } from './SeasonFX.jsx'
 import { useA, adminLocale } from './adminLang.js'
 
@@ -39,10 +37,8 @@ export default function SeasonAdmin({ toast }) {
   const a = useA()
   const [row, setRow] = useState(null); const [cfg, setCfg] = useState(null)
   const [preview, setPreview] = useState(null); const [dirty, setDirty] = useState(false); const [busy, setBusy] = useState(false)
-  useEffect(() => {
-    loadSettings().then(r => { const full = { ...DEMO_SETTINGS, ...(r || {}) }; setRow(full); const c = mergeHero(full.hero).season; setCfg(c); setPreview(activeSeason(c)) })
-      .catch(e => { toast(e.message, 'error'); setRow({ ...DEMO_SETTINGS }); setCfg(structuredClone(DEFAULT_HERO.season)) })
-  }, [])
+  const { err, retry, save: saveRow } = useSettingsRow(toast, full => { setRow(full); const c = mergeHero(full.hero).season; setCfg(c); setPreview(activeSeason(c)) })
+  if (err) return <LoadError err={err} onRetry={retry} />
   if (!cfg) return <p className="text-muted">{a('Đang tải…')}</p>
 
   const set = patch => { setDirty(true); setCfg(c => ({ ...c, ...patch })) }
@@ -50,7 +46,7 @@ export default function SeasonAdmin({ toast }) {
   const save = async () => {
     setBusy(true)
     const hero = { ...mergeHero(row.hero), season: cfg }
-    const { error } = await supabase.from('settings').upsert({ ...row, id: 1, hero })
+    const { error } = await saveRow({ hero })
     setBusy(false); if (error) return toast(a('{msg}. Đã chạy supabase/migration-hero.sql chưa?', { msg: error.message }), 'error')
     setRow(r => ({ ...r, hero })); setDirty(false); toast(a('Đã lưu hiệu ứng theo mùa'))
   }

@@ -1,8 +1,7 @@
 // Admin → Đầu trang: chỉnh huy hiệu, tiêu đề, số liệu, hình tròn + 2 thẻ, dải chữ chạy. Có xem trước trực tiếp.
 import { useEffect, useRef, useState } from 'react'
-import { supabase, uploadImage, uploadPdf } from './supabase.js'
-import { DEMO_SETTINGS } from './siteBase.js'
-import { loadSettings } from './useContent.js'
+import { uploadImage, uploadPdf } from './supabase.js'
+import { useSettingsRow, LoadError } from './settingsRow.jsx'
 import HeroVisual, { DEFAULT_HERO, mergeHero, Highlight, RGB_PRESETS, rgbGradient } from './HeroVisual.jsx'
 import { autoAvatar, newSeed } from './autoArt.js'
 import { LangTabs, EnEditor, heroEnFields, missingOf } from './LangAdmin.jsx'
@@ -178,21 +177,19 @@ function Preview({ h }) {
 }
 
 export default function HeroAdmin({ toast }) {
-  const [row, setRow] = useState(null); const [h, setH] = useState(null)
+  const [h, setH] = useState(null)
   const [dirty, setDirty] = useState(false); const [busy, setBusy] = useState(false)
   const [lang, setLang] = useState('vi')
   const a = useA()
-  useEffect(() => {
-    loadSettings().then(r => { const full = { ...DEMO_SETTINGS, ...(r || {}) }; setRow(full); setH(mergeHero(full.hero)) })
-      .catch(e => { toast(e.message, 'error'); setRow({ ...DEMO_SETTINGS }); setH(mergeHero()) })
-  }, [])
+  const { err, retry, save: saveRow } = useSettingsRow(toast, full => setH(mergeHero(full.hero)))
+  if (err) return <LoadError err={err} onRetry={retry} />
   if (!h) return <p className="text-muted">{a('Đang tải…')}</p>
 
   const patch = (k, v) => { setDirty(true); setH(x => ({ ...x, [k]: typeof v === 'function' ? v(x[k]) : { ...x[k], ...v } })) }
   const reset = k => { setDirty(true); setH(x => ({ ...x, [k]: structuredClone(DEFAULT_HERO[k]) })) }
   const save = async () => {
     setBusy(true)
-    const { error } = await supabase.from('settings').upsert({ ...row, id: 1, hero: h })
+    const { error } = await saveRow({ hero: h })
     setBusy(false); if (error) return toast(a('{msg}. Đã chạy supabase/migration-hero.sql chưa?', { msg: error.message }), 'error')
     setDirty(false); toast(a('Đã lưu phần đầu trang'))
   }

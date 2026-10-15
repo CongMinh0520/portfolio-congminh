@@ -282,4 +282,8 @@ export default {
   'Chưa chọn file.': 'No file selected.',
   'Re: Liên hệ từ portfolio Công Minh': 'Re: Your message via Công Minh\'s portfolio',
   'Chào {name},\n\n\n\n---\n{name} đã viết:\n> {quote}': 'Hi {name},\n\n\n\n---\n{name} wrote:\n> {quote}',
+
+  // settingsRow.jsx (nạp settings lỗi)
+  'Chưa tải được dữ liệu: {msg}': 'Couldn\'t load the data: {msg}',
+  'Để tránh ghi đè dữ liệu thật, trang này chưa cho lưu cho tới khi tải được.': 'To avoid overwriting your real data, saving is disabled until the data loads.',
 }

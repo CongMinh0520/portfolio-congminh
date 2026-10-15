@@ -1,7 +1,7 @@
 // Admin → Thương hiệu: logo, biểu tượng, favicon. Đổi là có hiệu lực ngay trên trang chủ và Admin.
 import { useEffect, useRef, useState } from 'react'
-import { supabase, uploadImage } from './supabase.js'
-import { loadSettings } from './useContent.js'
+import { uploadImage } from './supabase.js'
+import { useSettingsRow, LoadError } from './settingsRow.jsx'
 import { DEFAULT_BRAND, brandOf, BrandLogo, BrandIcon, faviconOf } from './Brand.jsx'
 import { useA } from './adminLang.js'
 
@@ -67,13 +67,14 @@ function Row({ r, brand, save, toast }) {
 export default function BrandAdmin({ toast, onSaved }) {
   const a = useA()
   const [brand, setBrand] = useState(null)
-  useEffect(() => { loadSettings().then(r => setBrand(brandOf(r))).catch(e => { toast(e.message, 'error'); setBrand(brandOf()) }) }, [])
+  const { err, retry, save: saveRow } = useSettingsRow(toast, full => setBrand(brandOf(full)))
   const save = async (patch, msg) => {
     const next = { ...brand, ...patch }
-    const { error } = await supabase.from('settings').update({ brand: next }).eq('id', 1)
+    const { error } = await saveRow({ brand: next })
     if (error) return toast(a('{msg}. Đã chạy supabase/migration-brand.sql chưa?', { msg: error.message }), 'error')
     setBrand(next); onSaved?.(next); toast(msg)
   }
+  if (err) return <LoadError err={err} onRetry={retry} />
   if (!brand) return <p className="text-muted">{a('Đang tải…')}</p>
   return (
     <div className="space-y-5 pb-16">
