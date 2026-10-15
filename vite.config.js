@@ -2,7 +2,7 @@ import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { viteSingleFile } from 'vite-plugin-singlefile'
-import { readFileSync, copyFileSync, rmSync, existsSync } from 'node:fs'
+import { readFileSync, copyFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -14,8 +14,8 @@ const APP_INFO = { version: pkg.version, built: new Date().toISOString(), deps }
 
 // npm run build        → bản deploy bình thường (tách file, trang Admin tải riêng)
 // npm run build:single → gộp tất cả vào 1 file index.html (để xem thử / gửi file)
-// Bản deploy: thêm app.html (khung trang cho mọi đường dẫn). Trên Vercel bỏ index.html để trang chủ "/"
-// đi qua hàm api/page (chèn tiêu đề, mô tả, ảnh chia sẻ riêng cho trang chủ).
+// Bản deploy: thêm app.html (khung trang cho Admin, api/page và scripts/prerender.mjs).
+// index.html sau đó được scripts/prerender.mjs ghi đè bằng trang chủ dựng sẵn (tiêu đề, mô tả, ảnh chia sẻ, dữ liệu).
 const appShell = () => ({
   name: 'app-shell',
   apply: 'build',
@@ -24,7 +24,6 @@ const appShell = () => ({
     const index = join(dir, 'index.html')
     if (!existsSync(index)) return
     copyFileSync(index, join(dir, 'app.html'))
-    if (process.env.VERCEL) rmSync(index)
   },
 })
 

@@ -1,6 +1,6 @@
-// Trang chi tiết bài Blog / Dự án: chèn sẵn tiêu đề, mô tả, ảnh chia sẻ vào HTML
-// để Facebook, Zalo, Google đọc được ngay mà không cần chạy JavaScript. Giao diện vẫn là trang React như cũ.
-// Mọi trang đi qua hàm này (kể cả type=static: /blog, /cv, /kiem-thu) đều được nhúng sẵn dữ liệu trang chủ.
+// Trang dựng lúc chạy (dự phòng): trang chủ, bài, dự án, bug, trang tĩnh đã được scripts/prerender.mjs ghi sẵn thành file HTML.
+// Hàm này chỉ chạy khi đường dẫn chưa có file: bài / dự án / bug mới thêm sau lần build, slug cũ, đường dẫn lạ (404).
+// Chèn sẵn tiêu đề, mô tả, ảnh chia sẻ và dữ liệu trang chủ vào HTML giống bản dựng sẵn (cùng module render/).
 import { rest, homeData, originOf, idFromSlug } from './_lib.js'
 import { STATIC, homeMeta, postMeta, projectMeta, bugMeta, staticMeta, renderPage } from '../render/page.js'
 
@@ -13,7 +13,7 @@ async function loadShell(origin) {
   // index.html sau khi build (vercel.json gói kèm file này vào hàm); không có thì tải qua web
   // app.html: bản deploy trên Vercel (index.html đã bỏ để trang chủ đi qua hàm này)
   for (const f of ['app.html', 'index.html']) { if (!shell) try { shell = await readFile(join(process.cwd(), 'dist', f), 'utf8') } catch {} }
-  if (!shell) { try { const r = await fetch(`${origin}/app.html`); if (r.ok) shell = await r.text() } catch {} }
+  if (!shell) { try { const r = await fetch(`${origin}/app`); if (r.ok) shell = await r.text() } catch {} }
   return shell || '<!doctype html><html lang="vi"><head><meta charset="utf-8"></head><body><div id="root"></div></body></html>'
 }
 

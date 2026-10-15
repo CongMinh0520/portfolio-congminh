@@ -1,4 +1,5 @@
 {
+  "cleanUrls": true,
   "functions": {
     "api/page.js": {
       "includeFiles": "dist/*.html"
@@ -95,11 +96,11 @@
     },
     {
       "source": "/admin",
-      "destination": "/app.html"
+      "destination": "/app"
     },
     {
       "source": "/admin/:path*",
-      "destination": "/app.html"
+      "destination": "/app"
     },
     {
       "source": "/((?!assets/|api/).*)",
