@@ -4,6 +4,7 @@
 // Gửi email báo + trả lời khách từ Admin (không bắt buộc): RESEND_API_KEY, RESEND_FROM, SITE_URL.
 // AI viết nháp trả lời (không bắt buộc): ANTHROPIC_API_KEY.
 // Thông báo đẩy (không bắt buộc): VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT.
+// Nút Xuất bản trong Admin (build lại trang tĩnh): VERCEL_DEPLOY_HOOK (Vercel → Settings → Git → Deploy Hooks).
 // SUPABASE_URL và SUPABASE_SERVICE_ROLE_KEY được Supabase tự cung cấp. Giữ nguyên "Verify JWT" (website gửi kèm anon key).
 
 import { createClient } from 'npm:@supabase/supabase-js@2.49.4'
@@ -219,6 +220,21 @@ async function sendPush(db: any, event: 'message' | 'post' | 'test', p: { title:
   } catch (e) { console.error('Push', e); return { sent: 0, reason: 'error' } }
 }
 
+/* ---------- Xuất bản: gọi Deploy Hook của Vercel để build lại trang tĩnh (supabase/migration-xuat-ban.sql) ---------- */
+async function publish(db: any) {
+  const hook = Deno.env.get('VERCEL_DEPLOY_HOOK')
+  if (!hook) return { status: 200, data: { ok: false, code: 'no-hook', error: 'Máy chủ chưa đặt VERCEL_DEPLOY_HOOK.' } }
+  const { data: st } = await db.from('publish_state').select('published_at').eq('id', 1).maybeSingle()
+  // Mỗi lần build mất khoảng 1 phút: chặn bấm liên tục
+  const wait = st?.published_at ? 60 - Math.floor((Date.now() - Date.parse(st.published_at)) / 1000) : 0
+  if (wait > 0) return { status: 429, data: { ok: false, code: 'too-soon', wait, error: `Vừa xuất bản, thử lại sau ${wait} giây.` } }
+  const r = await fetch(hook, { method: 'POST' }).catch(() => null)
+  if (!r?.ok) { console.error('Deploy hook', r?.status, await r?.text().catch(() => '')); return { status: 502, data: { ok: false, code: 'hook-failed', error: 'Vercel chưa nhận lệnh build, thử lại sau.' } } }
+  const published_at = new Date().toISOString()
+  await db.from('publish_state').upsert({ id: 1, published_at })
+  return { status: 200, data: { ok: true, published_at } }
+}
+
 Deno.serve(async req => {
   const cors = corsFor(req)
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
@@ -234,8 +250,8 @@ async function handle(req: Request): Promise<Response> {
   try { b = await req.json() } catch { return json(400, { code: 'invalid', error: 'Dữ liệu gửi lên không hợp lệ.' }) }
   if (b?.website) return json(200, { ok: true }) // ô bẫy (honeypot): bot điền vào thì bỏ qua, không lưu
 
-  // Việc của Admin (gửi thử thông báo đẩy, trả lời khách, AI viết nháp): chỉ người đã đăng nhập Admin (token thật) mới gọi được
-  if (['test-push', 'reply', 'draft'].includes(b?.action)) {
+  // Việc của Admin (gửi thử thông báo đẩy, trả lời khách, AI viết nháp, xuất bản): chỉ người đã đăng nhập Admin (token thật) mới gọi được
+  if (['test-push', 'reply', 'draft', 'publish'].includes(b?.action)) {
     const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } })
     const token = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '')
     const { data: u } = await db.auth.getUser(token).catch(() => ({ data: null }))
@@ -245,6 +261,7 @@ async function handle(req: Request): Promise<Response> {
     if (!adm) return json(403, { code: 'forbidden', error: 'Tài khoản này không có quyền Admin.' })
     if (b.action === 'reply') { const r = await sendReply(db, b); return json(r.status, r.data) }
     if (b.action === 'draft') { const r = await draftReply(db, b); return json(r.status, r.data) }
+    if (b.action === 'publish') { const r = await publish(db); return json(r.status, r.data) }
     return json(200, await sendPush(db, 'test', { title: 'Thông báo thử từ Admin', body: 'Thông báo đẩy đã chạy trên thiết bị này.', path: '/admin/thong-bao' }))
   }
 

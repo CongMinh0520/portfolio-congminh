@@ -375,6 +375,7 @@ create policy "admin all" on public.push_subscriptions for all to authenticated 
 -- Các policy "admin write" / "admin all" ở trên cho MỌI tài khoản đã đăng nhập quyền ghi.
 -- Sau khi tạo tài khoản Admin (Authentication → Users) và chạy migration-qa.sql,
 -- chạy supabase/migration-admin-lockdown.sql để chỉ tài khoản Admin mới được ghi / đọc tin nhắn / khôi phục sao lưu.
+-- Sau đó: migration-xuat-ban.sql (nút Xuất bản trong Admin) và migration-gioi-han-luot-xem.sql (chống ghi lượt xem ảo).
 
 -- ===== Nội dung mẫu (Manual QA Tester) — chỉ dùng khi cài mới; sửa / xóa trong Admin =====
 insert into public.skills (sort, icon, title, description, tags, en) values
