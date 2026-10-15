@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { coverOf } from './autoArt.js'
-import { href, postPath, projectPath, tagPath, blogPath, slugify } from './router.js'
+import { href, safeUrl, postPath, projectPath, tagPath, blogPath, slugify } from './router.js'
 import { useT } from './i18n.js'
 import { warmPost } from './prefetch.js'
 
@@ -325,7 +325,7 @@ export function PostDetail({ id, posts, cta }) {
           )}
           {showToc && <Toc heads={heads} mobile />}
           <div className="mt-8">{po.content ? <Markdown text={po.content} /> : <p className="text-muted">{t('post.empty')}</p>}</div>
-          {po.url && <a href={po.url} target="_blank" rel="noreferrer" className="mt-10 inline-flex items-center gap-2 rounded-xl border border-purple bg-purple/10 px-5 py-3 text-sm font-semibold transition hover:bg-purple/25">{t('post.source')}</a>}
+          {po.url && <a href={safeUrl(po.url)} target="_blank" rel="noreferrer" className="mt-10 inline-flex items-center gap-2 rounded-xl border border-purple bg-purple/10 px-5 py-3 text-sm font-semibold transition hover:bg-purple/25">{t('post.source')}</a>}
           <Cta cta={cta} />
         </div>
         {showToc && <aside className="min-w-0"><Toc heads={heads} /></aside>}
@@ -373,7 +373,7 @@ export function ProjectDetail({ id, projects }) {
           </dl>
         )}
         <div className="mt-10">{p.content ? <Markdown text={p.content} /> : <p className="text-muted">{t('proj.empty')}</p>}</div>
-        {p.link && <a href={p.link} target="_blank" rel="noreferrer" className={`${grad} mt-10 inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold`}>{t('proj.link')}</a>}
+        {p.link && <a href={safeUrl(p.link)} target="_blank" rel="noreferrer" className={`${grad} mt-10 inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold`}>{t('proj.link')}</a>}
         <Pager list={projects} index={index} path={projectPath} label={t('proj.unit')} />
       </div>
     </article>

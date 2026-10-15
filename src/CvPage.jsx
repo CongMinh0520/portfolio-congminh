@@ -1,6 +1,6 @@
 // Trang /cv: CV dựng tự động từ nội dung web (giới thiệu, kỹ năng, kinh nghiệm, dự án, liên hệ).
 // Nền trắng, khổ A4; bấm "In / Lưu PDF" là ra file PDF gọn. Tải riêng (lazy) nên trang chủ không phải tải phần này.
-import { href, projectPath, bugPath } from './router.js'
+import { href, safeUrl, projectPath, bugPath } from './router.js'
 import { useT } from './i18n.js'
 import { SITE } from './seo.js'
 
@@ -40,7 +40,7 @@ export default function CvPage({ hero, settings: s, socials, skills, jobs, proje
             <h1 className="text-[28px] font-extrabold leading-tight tracking-tight text-[#11121a] sm:text-[32px]">{SITE}</h1>
             <p className="text-[15px] font-semibold text-[#6650ff]">{t('cv.role')}</p>
             {contact.length > 0 && <p className="mt-1.5 flex flex-wrap gap-x-2.5 gap-y-0.5 text-[12.5px] text-[#4a4d5e]">{contact.map((c, i) => <span key={i} className="whitespace-nowrap">{i > 0 && <span aria-hidden className="mr-2.5 text-[#b8bacb]">·</span>}{c}</span>)}</p>}
-            {socials.length > 0 && <p className="mt-0.5 flex flex-wrap gap-x-3 text-[12.5px]">{socials.map(x => <a key={x.id} href={x.url} className={link}>{x.label}</a>)}</p>}
+            {socials.length > 0 && <p className="mt-0.5 flex flex-wrap gap-x-3 text-[12.5px]">{socials.map(x => <a key={x.id} href={safeUrl(x.url)} className={link}>{x.label}</a>)}</p>}
           </div>
         </header>
 

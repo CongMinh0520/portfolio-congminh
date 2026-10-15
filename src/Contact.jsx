@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { demoMode, insertRow } from './api.js'
 import { useT } from './i18n.js'
+import { safeUrl } from './router.js'
 
 const SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || ''
 const FN_URL = (import.meta.env.VITE_SUPABASE_URL || '').replace(/\/+$/, '') + '/functions/v1/gui-tin-nhan'
@@ -109,7 +110,7 @@ export default function Contact({ settings: s, socials = [] }) {
         </ul>
         {socials.length > 0 && (
           <div className="mt-6 flex flex-wrap gap-2">
-            {socials.map(x => <a key={x.id} href={x.url} target="_blank" rel="noreferrer" className="rounded-full border border-line px-3.5 py-1.5 text-[13px] text-[#c9cbd8] transition hover:border-purple hover:bg-purple/15 hover:text-white">{x.label} ↗</a>)}
+            {socials.map(x => <a key={x.id} href={safeUrl(x.url)} target="_blank" rel="noreferrer" className="rounded-full border border-line px-3.5 py-1.5 text-[13px] text-[#c9cbd8] transition hover:border-purple hover:bg-purple/15 hover:text-white">{x.label} ↗</a>)}
           </div>
         )}
       </div>

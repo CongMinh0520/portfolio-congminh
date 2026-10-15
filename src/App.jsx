@@ -12,7 +12,7 @@ const CvPage = lazy(() => import('./CvPage.jsx'))
 import { PostDetail, ProjectDetail, BlogList, BlogCard, blogPages, NotFoundPage } from './Detail.jsx'
 import { BugCard, BugDetail } from './Bugs.jsx'
 import { trackView } from './stats.js'
-import { HASH, href, navigate, usePath, idFromSlug, postPath, projectPath, blogPath, bugPath } from './router.js'
+import { HASH, href, safeUrl, navigate, usePath, idFromSlug, postPath, projectPath, blogPath, bugPath } from './router.js'
 import { useSeo } from './seo.js'
 import Contact from './Contact.jsx'
 import { BrandLogo, brandOf, useFavicon } from './Brand.jsx'
@@ -329,7 +329,7 @@ function Footer({ settings: s, links, socials, off, cv }) {
           {!off('sec_footer_menu') && links.length > 0 && (
             <FCol title={t('foot.menu')}>
               <ul className="space-y-2.5 text-sm text-muted">
-                {links.map(l => <li key={l.id}><a href={l.href} {...(isExt(l.href) ? { target: '_blank', rel: 'noreferrer' } : {})} className="inline-flex min-h-6 items-center transition hover:text-pink">{l.label}</a></li>)}
+                {links.map(l => <li key={l.id}><a href={safeUrl(l.href)} {...(isExt(l.href) ? { target: '_blank', rel: 'noreferrer' } : {})} className="inline-flex min-h-6 items-center transition hover:text-pink">{l.label}</a></li>)}
               </ul>
             </FCol>
           )}
@@ -347,7 +347,7 @@ function Footer({ settings: s, links, socials, off, cv }) {
             <FCol title={t('foot.socials')}>
               <div className="flex flex-wrap gap-2">
                 {socials.map(x => (
-                  <a key={x.id} href={x.url} target="_blank" rel="noreferrer"
+                  <a key={x.id} href={safeUrl(x.url)} target="_blank" rel="noreferrer"
                     className="rounded-full border border-line px-3.5 py-1.5 text-[13px] text-[#c9cbd8] transition hover:border-purple hover:bg-purple/15 hover:text-white">{x.label} ↗</a>
                 ))}
               </div>
@@ -408,7 +408,7 @@ function SiteBody({ path, raw, lang }) {
   const fLinks = footer_links.filter(l => !off(SECTION_OF[(l.href || '').replace(/^\/?#/, '')]))
   const hero = heroFor(settings.hero, lang)
   // File CV: tải lên ở Admin → Đầu trang (bản English nếu có); link cũ ở Thông tin chung vẫn dùng được
-  const cvUrl = (lang === 'en' && hero.cv?.file_en) || hero.cv?.file || settings.cv_url || ''
+  const cvUrl = safeUrl((lang === 'en' && hero.cv?.file_en) || hero.cv?.file || settings.cv_url || '').replace(/^#$/, '')
 
   // Trang hiện tại: / (trang chủ), /blog, /blog/ten-bai-12, /du-an/ten-du-an-3
   const [pathname, query = ''] = path.split('?')

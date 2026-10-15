@@ -1,5 +1,5 @@
 // Bug mẫu: thẻ trên trang chủ và trang chi tiết /bug/ten-bug-3 trình bày như một bug report thật.
-import { href, bugPath, bugCode } from './router.js'
+import { href, safeUrl, bugPath, bugCode } from './router.js'
 import { useT } from './i18n.js'
 import { Markdown, fmtDate } from './Detail.jsx'
 
@@ -71,7 +71,7 @@ export function BugReport({ b }) {
       {(tagsOf(b).length > 0 || ext) && (
         <div className="flex flex-wrap items-center gap-3">
           {tagsOf(b).map(x => <span key={x} className="rounded-full border border-line bg-white/5 px-3 py-1 text-xs text-[#c9cbd8]">#{x}</span>)}
-          {ext && <a href={b.product_url} target="_blank" rel="noreferrer nofollow" className="ml-auto inline-flex items-center gap-2 rounded-xl border border-purple bg-purple/10 px-4 py-2.5 text-sm font-semibold transition hover:bg-purple/25">{t('bug.visit')}</a>}
+          {ext && <a href={safeUrl(b.product_url)} target="_blank" rel="noreferrer nofollow" className="ml-auto inline-flex items-center gap-2 rounded-xl border border-purple bg-purple/10 px-4 py-2.5 text-sm font-semibold transition hover:bg-purple/25">{t('bug.visit')}</a>}
         </div>
       )}
     </div>
