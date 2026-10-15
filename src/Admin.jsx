@@ -8,6 +8,7 @@ import HeroAdmin, { ImageField } from './HeroAdmin.jsx'
 import SeasonAdmin from './SeasonAdmin.jsx'
 import AutoPostAdmin from './AutoPostAdmin.jsx'
 import { subscribePosts, subscribeTable } from './live.js'
+import PublishButton from './PublishButton.jsx'
 import { postStatus, STATUS_PATCH, STATUS_ORDER, sortPosts, publishPatch } from './postStatus.js'
 import MessagesAdmin, { loadMessages, isIn, SetupHelp } from './MessagesAdmin.jsx'
 import LangPage, { LangTabs, EnEditor, missingOf } from './LangAdmin.jsx'
@@ -1001,8 +1002,10 @@ export default function Admin() {
               {page === 'messages' && <SetupHelp />}
             </div>
           </div>
+          <div className="ml-auto" />
+          <PublishButton toast={toast} />
           <button onClick={() => setSearchOpen(true)} aria-label={a('Tìm kiếm')} aria-keyshortcuts={isMac() ? 'Meta+K' : 'Control+K'}
-            className="ml-auto flex flex-none items-center gap-2 rounded-lg text-muted transition hover:text-white sm:w-[260px] sm:border sm:border-line sm:bg-[#0b0d16] sm:px-3 sm:py-2 sm:hover:border-[#3a3f5a]">
+            className="flex flex-none items-center gap-2 rounded-lg text-muted transition hover:text-white sm:w-[260px] sm:border sm:border-line sm:bg-[#0b0d16] sm:px-3 sm:py-2 sm:hover:border-[#3a3f5a]">
             <span className={`${iconBtn} sm:size-auto sm:hover:bg-transparent`}><Icon name="search" className="size-4" /></span>
             <span className="hidden flex-1 text-left text-sm sm:block">{a('Tìm kiếm…')}</span>
             <kbd className="hidden rounded border border-line px-1.5 py-0.5 text-[10px] sm:block">{isMac() ? '⌘K' : 'Ctrl K'}</kbd>

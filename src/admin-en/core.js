@@ -270,4 +270,15 @@ export default {
   'Có bài mới từ Easy AI: {title}': 'New post from Easy AI: {title}',
   'Có bài mới từ Easy AI: {title} (chờ duyệt)': 'New post from Easy AI: {title} (pending review)',
   'Tin nhắn mới từ {name}': 'New message from {name}',
+  // Nút Xuất bản (PublishButton.jsx)
+  'Xuất bản': 'Publish',
+  'Đang gửi…': 'Sending…',
+  'Đang build…': 'Building…',
+  'Có thay đổi chưa xuất bản lên trang công khai': 'There are changes not yet published to the public site',
+  'Trang công khai đã có nội dung mới nhất': 'The public site is up to date',
+  'Đang xuất bản, trang công khai cập nhật sau khoảng 1 phút': 'Publishing — the public site updates in about a minute',
+  'Máy chủ chưa có VERCEL_DEPLOY_HOOK cho hàm gui-tin-nhan.': 'The gui-tin-nhan function has no VERCEL_DEPLOY_HOOK yet.',
+  'Vừa xuất bản, thử lại sau {n} giây.': 'Just published, try again in {n} seconds.',
+  'Vercel chưa nhận lệnh build, thử lại sau.': 'Vercel did not accept the build request, try again later.',
+  'Chưa xuất bản được: {msg}': 'Could not publish: {msg}',
 }
