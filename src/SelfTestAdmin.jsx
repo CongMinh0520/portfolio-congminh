@@ -1,8 +1,6 @@
 // Admin → Trang Kiểm thử web: sửa nội dung trang /kiem-thu (lưu ở cột settings.selftest, xem supabase/migration-qa.sql).
-import { useEffect, useState } from 'react'
-import { supabase } from './supabase.js'
-import { loadSettings } from './useContent.js'
-import { DEMO_SETTINGS } from './siteBase.js'
+import { useState } from 'react'
+import { useSettingsRow, LoadError } from './settingsRow.jsx'
 import { DEFAULT_SELFTEST, selftestOf } from './selftestData.js'
 import { href } from './router.js'
 import { useA } from './adminLang.js'
@@ -78,21 +76,19 @@ const FOUND = [['fixed', 'Đã sửa'], ['open', 'Đang theo dõi'], ['note', 'G
 
 export default function SelfTestAdmin({ toast }) {
   const a = useA()
-  const [row, setRow] = useState(null); const [st, setSt] = useState(null)
+  const [st, setSt] = useState(null)
   const [dirty, setDirty] = useState(false); const [busy, setBusy] = useState(false)
-  useEffect(() => {
-    loadSettings().then(r => { const full = { ...DEMO_SETTINGS, ...(r || {}) }; setRow(full); setSt(selftestOf(full.selftest)) })
-      .catch(e => { toast(e.message, 'error'); setRow({ ...DEMO_SETTINGS }); setSt(selftestOf()) })
-  }, [])
+  const { err, retry, save: saveRow } = useSettingsRow(toast, full => setSt(selftestOf(full.selftest)))
   const set = patch => { setDirty(true); setSt(s => ({ ...s, ...patch })) }
   const setScore = (dev, k, v) => set({ scores: { ...st.scores, [dev]: { ...st.scores[dev], [k]: v === '' ? '' : Math.max(0, Math.min(100, Math.round(Number(v) || 0))) } } })
   const save = async () => {
     setBusy(true)
-    const { error } = await supabase.from('settings').upsert({ ...row, id: 1, selftest: st })
+    const { error } = await saveRow({ selftest: st })
     setBusy(false)
     if (error) return toast(/selftest/i.test(error.message) ? a('Chưa có chỗ lưu: chạy file supabase/migration-qa.sql trong Supabase → SQL Editor.') : error.message, 'error')
-    setRow(r => ({ ...r, selftest: st })); setDirty(false); toast(a('Đã lưu trang Kiểm thử'))
+    setDirty(false); toast(a('Đã lưu trang Kiểm thử'))
   }
+  if (err) return <LoadError err={err} onRetry={retry} />
   if (!st) return <p className="text-muted">{a('Đang tải…')}</p>
   return (
     <div className="space-y-5 pb-24">

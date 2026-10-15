@@ -1,7 +1,8 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase, demoMode, demoAccount } from './supabase.js'
-import { GRADS, DEMO_SETTINGS, SECTIONS } from './siteBase.js'
+import { GRADS, SECTIONS } from './siteBase.js'
 import { loadTable, loadSettings } from './useContent.js'
+import { useSettingsRow, LoadError } from './settingsRow.jsx'
 import RichEditor from './RichEditor.jsx'
 import CursorFX, { POINTERS, TRAILS, parseCursor, joinCursor } from './CursorFX.jsx'
 import HeroAdmin, { ImageField } from './HeroAdmin.jsx'
@@ -565,18 +566,16 @@ function SettingsForm({ toast }) {
   const a = useA()
   const [form, setForm] = useState(null); const [dirty, setDirty] = useState(false); const [busy, setBusy] = useState(false)
   const [formLang, setFormLang] = useState('vi')
-  useEffect(() => {
-    loadSettings().then(r => setForm({ ...DEMO_SETTINGS, ...(r || {}), hidden: r?.hidden || [] }))
-      .catch(e => { toast(e.message, 'error'); setForm({ ...DEMO_SETTINGS }) })
-  }, [])
+  const { err, retry, save: saveRow } = useSettingsRow(toast, full => setForm({ ...full, hidden: full.hidden || [] }))
   const set = patch => { setDirty(true); setForm({ ...form, ...patch }) }
   const save = async e => {
     e.preventDefault(); setBusy(true)
     const hero = form.hero && { ...form.hero, en: { ...(form.hero.en || {}), post_cta: cleanEn(form.hero.en?.post_cta, CTA_TR.map(([p, l, t]) => [p.split('.')[1], l, t])) } }
-    const { error } = await supabase.from('settings').upsert({ ...form, id: 1, en: cleanEn(form.en, SETTINGS_TR), ...(hero ? { hero } : {}) })
+    const { error } = await saveRow({ ...form, en: cleanEn(form.en, SETTINGS_TR), ...(hero ? { hero } : {}) })
     setBusy(false); if (error) return toast(error.message, 'error')
     setDirty(false); toast(a('Đã lưu thông tin chung'))
   }
+  if (err) return <LoadError err={err} onRetry={retry} />
   if (!form) return <p className="text-muted">{a('Đang tải…')}</p>
   return (
     <form onSubmit={save} className="space-y-5 pb-24">
@@ -652,19 +651,17 @@ function LayoutForm({ toast }) {
   const a = useA()
   const [row, setRow] = useState(null); const [hidden, setHidden] = useState(new Set())
   const [dirty, setDirty] = useState(false); const [busy, setBusy] = useState(false)
-  useEffect(() => {
-    loadSettings().then(r => { const full = { ...DEMO_SETTINGS, ...(r || {}) }; setRow(full); setHidden(new Set(full.hidden || [])) })
-      .catch(e => { toast(e.message, 'error'); setRow({ ...DEMO_SETTINGS }); setHidden(new Set(DEMO_SETTINGS.hidden)) })
-  }, [])
+  const { err, retry, save: saveRow } = useSettingsRow(toast, full => { setRow(full); setHidden(new Set(full.hidden || [])) })
   // Cập nhật theo bản mới nhất (bấm nhanh nhiều công tắc liên tiếp không bị mất lần bấm trước)
   const flip = k => { setHidden(prev => { const h = new Set(prev); h.has(k) ? h.delete(k) : h.add(k); return h }); setDirty(true) }
   const setGroup = (keys, show) => { setHidden(prev => { const h = new Set(prev); keys.forEach(k => show ? h.delete(k) : h.add(k)); return h }); setDirty(true) }
   const save = async () => {
     setBusy(true)
-    const { error } = await supabase.from('settings').upsert({ ...row, id: 1, hidden: [...hidden] })
+    const { error } = await saveRow({ hidden: [...hidden] })
     setBusy(false); if (error) return toast(error.message, 'error')
     setDirty(false); toast(a('Đã lưu bố cục trang chủ'))
   }
+  if (err) return <LoadError err={err} onRetry={retry} />
   if (!row) return <p className="text-muted">{a('Đang tải…')}</p>
   const secKeys = SECTIONS.flatMap(([, , items]) => items.map(([k]) => k))
   const offCount = secKeys.filter(k => hidden.has(k)).length
@@ -737,17 +734,15 @@ function CursorPage({ toast }) {
   const [row, setRow] = useState(null)
   const [pick, setPick] = useState({ pointer: 'none', trail: 'none' })
   const [saved, setSaved] = useState({ pointer: 'none', trail: 'none' }); const [busy, setBusy] = useState(false)
-  useEffect(() => {
-    loadSettings().then(r => { const full = { ...DEMO_SETTINGS, ...(r || {}) }; setRow(full); const c = parseCursor(full.cursor_effect); setPick(c); setSaved(c) })
-      .catch(e => { toast(e.message, 'error'); setRow({ ...DEMO_SETTINGS }) })
-  }, [])
+  const { err, retry, save: saveRow } = useSettingsRow(toast, full => { setRow(full); const c = parseCursor(full.cursor_effect); setPick(c); setSaved(c) })
   const dirty = pick.pointer !== saved.pointer || pick.trail !== saved.trail
   const save = async () => {
     setBusy(true)
-    const { error } = await supabase.from('settings').upsert({ ...row, id: 1, cursor_effect: joinCursor(pick) })
+    const { error } = await saveRow({ cursor_effect: joinCursor(pick) })
     setBusy(false); if (error) return toast(error.message, 'error')
     setSaved(pick); toast(a('Đã áp dụng cho trang chủ'))
   }
+  if (err) return <LoadError err={err} onRetry={retry} />
   if (!row) return <p className="text-muted">{a('Đang tải…')}</p>
   const name = (list, k) => list.find(c => c[0] === k)?.[1]
   return (

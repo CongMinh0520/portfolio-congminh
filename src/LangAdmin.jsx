@@ -1,8 +1,7 @@
 // Admin: nhập bản English cho nội dung + trang Ngôn ngữ (mặc định, nút đổi, tiến độ dịch).
 import { useEffect, useState } from 'react'
-import { supabase } from './supabase.js'
-import { DEMO_SETTINGS } from './siteBase.js'
-import { loadTable, loadSettings } from './useContent.js'
+import { loadTable } from './useContent.js'
+import { useSettingsRow, LoadError } from './settingsRow.jsx'
 import RichEditor from './RichEditor.jsx'
 import { mergeHero } from './HeroVisual.jsx'
 import { TR_FIELDS, SETTINGS_TR, HERO_TR, CTA_TR, getPath, setPath, hasEn, LANGS } from './i18n.js'
@@ -106,18 +105,19 @@ export default function LangPage({ toast, go }) {
   const a = useA()
   const [row, setRow] = useState(null); const [stats, setStats] = useState(null)
   const [busy, setBusy] = useState(false); const [email, setEmail] = useState(getMmEmail())
+  const { err, retry, save: saveRow } = useSettingsRow(toast, setRow)
   useEffect(() => {
-    loadSettings().then(r => setRow({ ...DEMO_SETTINGS, ...(r || {}) })).catch(e => { toast(e.message, 'error'); setRow({ ...DEMO_SETTINGS }) })
     Promise.all(Object.keys(TR_FIELDS).map(t => loadTable(t).then(rows => [t, rows]).catch(() => [t, []])))
       .then(list => setStats(Object.fromEntries(list.map(([t, rows]) => [t, { total: rows.length, done: rows.filter(r => TR_FIELDS[t].every(([k]) => hasEn(r, k))).length }]))))
   }, [])
   const save = async patch => {
     setBusy(true)
     const next = { ...row, ...patch }
-    const { error } = await supabase.from('settings').upsert({ ...next, id: 1 })
+    const { error } = await saveRow(patch)
     setBusy(false); if (error) return toast(a('{msg}. Đã chạy supabase/migration-i18n.sql chưa?', { msg: error.message }), 'error')
     setRow(next); toast(a('Đã lưu cài đặt ngôn ngữ'))
   }
+  if (err) return <LoadError err={err} onRetry={retry} />
   if (!row) return <p className="text-muted">{a('Đang tải…')}</p>
   const h = mergeHero(row.hero)
   const heroMiss = missingOf(heroEnFields(h), h, h.en), heroAll = heroEnFields(h).filter(([p]) => filled(getPath(h, p))).length
