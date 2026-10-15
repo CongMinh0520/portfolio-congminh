@@ -13,7 +13,7 @@ async function loadShell(origin) {
   // index.html sau khi build (vercel.json gói kèm file này vào hàm); không có thì tải qua web
   // app.html: bản deploy trên Vercel (index.html đã bỏ để trang chủ đi qua hàm này)
   for (const f of ['app.html', 'index.html']) { if (!shell) try { shell = await readFile(join(process.cwd(), 'dist', f), 'utf8') } catch {} }
-  if (!shell) { try { const r = await fetch(`${origin}/app.html`); if (r.ok) shell = await r.text() } catch {} }
+  if (!shell) { try { const r = await fetch(`${origin}/app`); if (r.ok) shell = await r.text() } catch {} }
   return shell || '<!doctype html><html lang="vi"><head><meta charset="utf-8"></head><body><div id="root"></div></body></html>'
 }
 
