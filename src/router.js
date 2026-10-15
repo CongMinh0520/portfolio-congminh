@@ -31,6 +31,13 @@ export function href(link = '/') {
   return HASH ? `#${link}` : link
 }
 
+/** Link lấy từ dữ liệu (Admin nhập, sao lưu khôi phục…): chỉ cho http(s), mailto, tel, #muc, /duong-dan và file tải lên ở bản demo.
+ *  Còn lại (javascript:, data:text/html, //trang-la…) thành "#" để không chạy được mã lạ trên trang. */
+export function safeUrl(u) {
+  const s = String(u ?? '').trim()
+  return /^(https?:|mailto:|tel:)/i.test(s) || /^[#?]/.test(s) || /^\/(?!\/)/.test(s) || /^data:(image\/(png|jpe?g|webp|gif|avif)|application\/pdf)[;,]/i.test(s) ? s : '#'
+}
+
 /** Đường dẫn hiện tại (có cả ?query), VD "/blog?the=QA" */
 export function currentPath() {
   if (HASH) { const h = location.hash; return h.startsWith('#/') ? h.slice(1) : '/' }
