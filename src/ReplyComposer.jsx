@@ -106,11 +106,10 @@ export default function ReplyComposer({ thread, quoteMsg, cfg, library, fromName
   const text = d.text || '', files = d.files || [], subject = d.subject ?? defSubject
   const [mode, setMode] = useState('email')
   const [editSubject, setEditSubject] = useState(false)
-  const [quote, setQuote] = useState(true)
+  const [quote, setQuote] = useState(false) // có kèm trích dẫn tin khách (bấm + Trích dẫn để thêm)
   const [sign, setSign] = useState(cfg.signature_on !== false)
   const [open, setOpen] = useState('') // tpl | lib | ai | emoji | more
   const [fmt, setFmt] = useState(false) // hàng nút định dạng
-  const [quoteOpen, setQuoteOpen] = useState(false) // trích dẫn đang mở ra xem
   const [editSig, setEditSig] = useState(false) // đang sửa chữ ký ngay trong thư
   const [slash, setSlash] = useState(null) // chữ sau dấu "/" khi gõ mẫu nhanh
   const [hi, setHi] = useState(0)
@@ -120,9 +119,9 @@ export default function ReplyComposer({ thread, quoteMsg, cfg, library, fromName
   useDismiss(box, !!open, () => { setOpen(''); setSlash(null) })
   useEffect(() => { setSign(cfg.signature_on !== false) }, [cfg.signature_on])
   // Đổi hội thoại: về chế độ Email, đóng popover
-  // Bấm "+ Trích dẫn" hay "···": mở luôn trích dẫn và cuộn tới nó (nằm dưới ô soạn, dễ bị khuất)
-  useEffect(() => { if (quoteOpen) quoteBox.current?.scrollIntoView({ block: 'nearest' }) }, [quoteOpen])
-  useEffect(() => { setMode('email'); setOpen(''); setSlash(null); setEditSubject(false); setQuoteOpen(false); setEditSig(false) }, [key])
+  // Bấm "+ Trích dẫn": hiện luôn trích dẫn và cuộn tới nó (nằm dưới ô soạn, dễ bị khuất)
+  useEffect(() => { if (quote) quoteBox.current?.scrollIntoView({ block: 'nearest' }) }, [quote])
+  useEffect(() => { setMode('email'); setOpen(''); setSlash(null); setEditSubject(false); setQuote(false); setEditSig(false) }, [key])
 
   const patch = p => setDrafts(all => {
     const next = { ...all, [key]: { ...all[key], ...p } }
@@ -355,7 +354,7 @@ export default function ReplyComposer({ thread, quoteMsg, cfg, library, fromName
           className="block min-h-[72px] w-full flex-1 resize-none overflow-y-auto bg-transparent px-3.5 py-2.5 text-[15px] leading-[1.6] text-[#e6e7f0] outline-none placeholder:text-[#7d81a0]" />
         <div className="flex-none">
 
-        {/* Như Gmail: chữ ký hiện mờ cuối thư (× để bỏ), trích dẫn thu gọn thành "···" (bấm để xem / bỏ) */}
+        {/* Như Gmail: chữ ký hiện mờ cuối thư (× để bỏ), trích dẫn thêm bằng "+ Trích dẫn" (bỏ được) */}
         {!note && sign && editSig && (
           <div className="mx-3 mb-1.5 border-t border-dashed border-[#3a3f5a] pt-2">
             <textarea autoFocus rows={Math.min(5, Math.max(2, (d.sig ?? sigDefault).split('\n').length))} maxLength={1000} value={d.sig ?? sigDefault} aria-label={a('Chữ ký')}
@@ -381,10 +380,10 @@ export default function ReplyComposer({ thread, quoteMsg, cfg, library, fromName
             </span>
           </div>
         )}
-        {!note && quote && quoteMsg && quoteOpen && (
+        {!note && quote && quoteMsg && (
           <div ref={quoteBox} className="mx-3 mb-1.5 rounded-lg border-l-2 border-[#3a3f5a] bg-white/[0.03] py-1.5 pl-3 pr-2 text-[13px] text-muted">
             <div className="flex items-center gap-2 text-xs"><span className="min-w-0 flex-1 truncate">{quoteBody.when}, {quoteMsg.name}:</span>
-              <button type="button" onClick={() => { setQuote(false); setQuoteOpen(false) }} className="flex-none font-medium text-[#b5aaff] hover:text-white">{a('Bỏ trích dẫn')}</button></div>
+              <button type="button" onClick={() => setQuote(false)} className="flex-none font-medium text-[#b5aaff] hover:text-white">{a('Bỏ trích dẫn')}</button></div>
             <p className="mt-1 line-clamp-4 whitespace-pre-wrap break-words">{quoteMsg.message}</p>
           </div>
         )}
@@ -468,11 +467,9 @@ export default function ReplyComposer({ thread, quoteMsg, cfg, library, fromName
             <span className="text-[13px] font-semibold">Aa</span>
           </RoundBtn>
           {/* Chữ ký / trích dẫn: chip nhỏ ngay trên hàng nút, không chiếm chỗ ô soạn */}
-          {!note && ((quoteMsg && (!quote || !quoteOpen)) || ((!sign || !sigText) && !editSig)) && <>
+          {!note && ((quoteMsg && !quote) || ((!sign || !sigText) && !editSig)) && <>
             <span className="mx-1 h-5 w-px bg-[#2a2e45]" aria-hidden="true" />
-            {quoteMsg && quote && !quoteOpen && <button type="button" onClick={() => setQuoteOpen(true)} title={a('Hiện tin được trích dẫn')} aria-label={a('Hiện tin được trích dẫn')}
-              className={`${chip} tracking-[2px]`}>···</button>}
-            {quoteMsg && !quote && <button type="button" onClick={() => { setQuote(true); setQuoteOpen(true) }} className={chip}>+ {a('Trích dẫn')}</button>}
+            {quoteMsg && !quote && <button type="button" onClick={() => setQuote(true)} className={chip}>+ {a('Trích dẫn')}</button>}
             {(!sign || !sigText) && !editSig && <button type="button" onClick={() => { setSign(true); if (!sigText) setEditSig(true) }} className={chip}>+ {a('Chữ ký')}</button>}
           </>}
 
