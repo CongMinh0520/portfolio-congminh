@@ -30,6 +30,7 @@ const ago = iso => {
   return new Date(iso).toLocaleDateString(adminLocale(), { day: 'numeric', month: 'numeric' })
 }
 const timeOf = iso => { try { return new Date(iso).toLocaleString(adminLocale(), { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'numeric', year: 'numeric' }) } catch { return iso } }
+const clockOf = iso => { try { return new Date(iso).toLocaleTimeString(adminLocale(), { hour: '2-digit', minute: '2-digit' }) } catch { return '' } }
 const dayOf = iso => { try { return new Date(iso).toLocaleDateString(adminLocale(), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) } catch { return '' } }
 const PALETTES = [['#e94b9e', '#6650ff'], ['#ff9a54', '#e94b9e'], ['#22c3ff', '#6650ff'], ['#3ddc97', '#22c3ff'], ['#f8d27c', '#ff9a54'], ['#a58bff', '#e94b9e']]
 /** Màu riêng cho từng người, cố định theo email */
@@ -120,34 +121,39 @@ function Bubble({ m, cur, retrying, onRetry }) {
   const a = useA()
   const files = m.attachments || []
   if (isIn(m)) return (
-    <div className="flex max-w-[min(640px,85%)] items-end gap-2">
+    <div className="flex max-w-[min(640px,85%)] items-end gap-2.5">
       <span className="grid size-7 flex-none place-items-center rounded-full text-[10px] font-bold text-white" style={{ background: colorOf(cur.key) }} aria-hidden="true">{initials(m.name)}</span>
       <div className="min-w-0">
-        <div className="rounded-2xl rounded-bl-md bg-[#1d2033] px-4 py-2.5">
+        <div className="rounded-2xl rounded-bl-[4px] bg-[#1d2033] px-3.5 py-2.5">
           {m.name !== cur.name && <p className="mb-1 text-xs font-semibold text-[#b5aaff]">{m.name}</p>}
-          <p className="whitespace-pre-wrap leading-relaxed text-[#eceef6] [overflow-wrap:anywhere]">{m.message}</p>
+          <p className="whitespace-pre-wrap text-[15px] leading-[1.55] text-[#eceef6] [overflow-wrap:anywhere]">{m.message}</p>
         </div>
-        <p className="mt-1 pl-1 text-[11px] text-[#8b8fa8]">{timeOf(m.created_at)}</p>
+        <p className="mt-1 pl-1 text-xs text-[#8b8fa8]" title={timeOf(m.created_at)}>{clockOf(m.created_at)}</p>
       </div>
     </div>
   )
-  const note = m.direction === 'note', failed = m.status === 'failed'
-  const box = note ? 'border-[#f8d27c]/30 bg-[#f8d27c]/[0.08]' : failed ? 'border-red-400/50 bg-red-500/[0.06]' : 'border-purple/40 bg-purple/[0.14]'
+  // Ghi chú nội bộ: ô viền đứt màu vàng ở giữa, tách hẳn khỏi thư gửi khách
+  if (m.direction === 'note') return (
+    <div className="mx-auto w-full max-w-[560px] rounded-xl border border-dashed border-[#6b5a2e] bg-[#1e1b12] px-3.5 py-2.5">
+      <p className="flex items-center gap-1.5 text-xs font-semibold text-[#f8d27c]"><Icon d="M5 3h10l4 4v14H5z M15 3v4h4 M8 12h8 M8 16h5" className="size-3.5" />{a('Ghi chú nội bộ · chỉ Admin thấy')}</p>
+      <p className="mt-1 whitespace-pre-wrap text-sm leading-[1.55] text-[#ece4cc] [overflow-wrap:anywhere]">{m.message}</p>
+      {files.length > 0 && <div className="mt-2 flex flex-wrap gap-1.5">{files.map(f => <FileChip key={f.url} f={f} href={f.url} />)}</div>}
+      <p className="mt-1 text-xs text-[#a99a6e]" title={timeOf(m.created_at)}>{clockOf(m.created_at)}{m.name ? ` · ${m.name}` : ''}</p>
+    </div>
+  )
+  const failed = m.status === 'failed'
   return (
-    <div className="ml-auto flex max-w-[min(640px,85%)] justify-end">
-      <div className={`min-w-0 rounded-2xl rounded-br-md border px-4 py-3 ${box}`}>
-        {note ? <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-[#f8d27c]"><Icon d="M5 3h10l4 4v14H5z M15 3v4h4 M8 12h8 M8 16h5" className="size-3.5" />{a('Ghi chú nội bộ')}</p>
-          : m.subject && <p className="mb-1 truncate text-xs font-semibold text-[#c9bfff]">{m.subject}</p>}
-        <p className="whitespace-pre-wrap leading-relaxed text-[#eeeaff] [overflow-wrap:anywhere]">{m.message}</p>
+    <div className="ml-auto flex max-w-[min(640px,85%)] flex-col items-end">
+      <div className={`min-w-0 rounded-2xl rounded-br-[4px] px-3.5 py-2.5 ${failed ? 'border border-red-400/50 bg-red-500/[0.10]' : 'bg-[#3a2d7a]'}`}>
+        {m.subject && <p className="mb-1 truncate text-xs font-semibold text-[#c9bfff]">{m.subject}</p>}
+        <p className="whitespace-pre-wrap text-[15px] leading-[1.55] text-[#f4f1ff] [overflow-wrap:anywhere]">{m.message}</p>
         {files.length > 0 && <div className="mt-2 flex flex-wrap gap-1.5">{files.map(f => <FileChip key={f.url} f={f} href={f.url} />)}</div>}
-        <p className={`mt-1.5 flex flex-wrap items-center justify-end gap-x-1.5 text-[11px] ${failed ? 'text-red-300' : note ? 'text-[#f8d27c]/70' : 'text-[#a99dff]'}`}>
-          {!note && <Icon d="M3 6h18v12H3z M3 7l9 6 9-6" className="size-3" />}
-          {note ? '' : failed ? a('Chưa gửi được') : m.status === 'external' ? a('Soạn trong Gmail / app email') : a('Đã gửi qua email')}
-          {!note && ' · '}{timeOf(m.created_at)}
-          {m.status === 'sent' && <span aria-hidden="true">✓✓</span>}
-          {failed && <button type="button" onClick={onRetry} disabled={retrying} className="ml-1 font-semibold underline underline-offset-2 hover:text-white disabled:opacity-60">{retrying ? a('Đang gửi…') : a('Gửi lại')}</button>}
-        </p>
       </div>
+      <p className={`mt-1 flex flex-wrap items-center justify-end gap-x-1.5 pr-1 text-xs ${failed ? 'text-red-300' : 'text-[#8b8fa8]'}`} title={timeOf(m.created_at)}>
+        {clockOf(m.created_at)} · {failed ? a('Chưa gửi được') : m.status === 'external' ? a('Soạn trong Gmail / app email') : a('Đã gửi email')}
+        {m.status === 'sent' && <span aria-hidden="true">✓✓</span>}
+        {failed && <button type="button" onClick={onRetry} disabled={retrying} className="ml-1 font-semibold underline underline-offset-2 hover:text-white disabled:opacity-60">{retrying ? a('Đang gửi…') : a('Gửi lại')}</button>}
+      </p>
     </div>
   )
 }
@@ -239,7 +245,7 @@ export default function MessagesAdmin({ toast, live, onChanged, openThread }) {
             {shown.map(t => (
               <li key={t.key}>
                 <button onClick={() => setOpenKey(t.key)}
-                  className={`flex w-full gap-3 border-b border-line/70 px-3.5 py-3 text-left transition hover:bg-white/5 ${t.key === openKey ? 'bg-purple/15' : t.unread ? 'bg-white/[0.03]' : ''}`}>
+                  className={`flex w-full gap-3 border-b border-line/70 px-3.5 py-3 text-left transition hover:bg-white/5 ${t.key === openKey ? 'bg-[#1b1d33] shadow-[inset_3px_0_0_#8b6cff]' : t.unread ? 'bg-white/[0.03]' : ''}`}>
                   <Avatar t={t} />
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center gap-1 text-[11px] text-[#7d81a0]"><Svg d={GLOBE} className="size-3 text-[#22c3ff]" />{a('Form liên hệ')}</span>
@@ -268,19 +274,19 @@ export default function MessagesAdmin({ toast, live, onChanged, openThread }) {
               <Avatar t={cur} size="size-10 text-sm" />
               <div className="min-w-0 flex-1">
                 <p className="truncate font-semibold">{cur.name}</p>
-                <a href={`mailto:${cur.email}`} className="block truncate text-xs text-[#b5aaff] hover:underline">{cur.email}</a>
+                <a href={`mailto:${cur.email}`} className="block truncate text-[13px] text-[#9a9eb8] hover:text-white hover:underline">{cur.email}</a>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <a href={reply} className={ghost} title={a('Mở app email trên máy với thư trả lời soạn sẵn')}><Icon d="mail" />{a('Mở app email')}</a>
-                <button onClick={() => { setOpenKey(null); setRead([cur.lastIn.id], false) }} className={ghost} title={a('Đánh dấu chưa đọc và đóng hội thoại')}>{a('Chưa đọc')}</button>
+                <button onClick={() => { setOpenKey(null); setRead([cur.lastIn.id], false) }} className={ghost} title={a('Đánh dấu chưa đọc và đóng hội thoại')}>{a('Đánh dấu chưa đọc')}</button>
               </div>
             </header>
-            <div className="min-h-[120px] flex-1 space-y-3 overflow-y-auto px-4 py-4 sm:px-6">
+            <div className="min-h-[120px] flex-1 space-y-3.5 overflow-y-auto px-4 py-5 sm:px-7">
               {cur.msgs.map((m, i) => {
                 const newDay = i === 0 || dayOf(m.created_at) !== dayOf(cur.msgs[i - 1].created_at)
                 return (
                   <div key={m.id}>
-                    {newDay && <p className="my-3 flex justify-center"><span className="rounded-full bg-[#1a1d2e] px-3 py-1 text-[11px] font-medium text-[#b4b7cc]">{dayOf(m.created_at)}</span></p>}
+                    {newDay && <p className="my-3 flex justify-center"><span className="rounded-full bg-[#1a1d2e] px-3 py-1 text-xs font-medium text-[#b4b7cc]">{dayOf(m.created_at)}</span></p>}
                     <Bubble m={m} cur={cur} retrying={retrying === m.id} onRetry={() => retry(m)} />
                   </div>
                 )
