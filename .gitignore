@@ -8,3 +8,20 @@ dist
 
 # Supabase CLI (tự tạo khi chạy npx supabase)
 supabase/.temp/
+
+# Secret / khóa riêng (phòng hờ)
+*.pem
+*.key
+*.p12
+supabase/functions/.env
+supabase/.branches/
+
+# File sao lưu tải từ Admin (chứa toàn bộ dữ liệu, gồm cả tin nhắn)
+congminh-sao-luu-*.json
+
+# Log & rác hệ điều hành / editor
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+.idea/
