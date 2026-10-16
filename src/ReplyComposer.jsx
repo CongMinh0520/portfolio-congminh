@@ -133,7 +133,7 @@ export default function ReplyComposer({ thread, quoteMsg, cfg, library, fromName
     return next
   })
   const setText = v => patch({ text: v })
-  // Khung soạn cao cố định (thư dài thì cuộn bên trong), nút ⤢ để phóng to khi cần
+  // Khung soạn cao cố định (thư dài thì cuộn bên trong), nút ⤢ để phóng to: phủ kín vùng tin nhắn phía trên (cha phải relative)
   const [big, setBig] = useState(false)
 
   const templates = cfg.templates || defaultTemplates(library.find(f => f.cv))
@@ -301,7 +301,7 @@ export default function ReplyComposer({ thread, quoteMsg, cfg, library, fromName
   const note = mode === 'note'
   const toggle = k => setOpen(o => (o === k ? '' : k))
   return (
-    <div className={`flex flex-none flex-col gap-1.5 border-t border-line px-3 pb-2.5 pt-3 sm:px-5 ${big ? 'h-[min(76vh,680px)]' : 'h-[clamp(240px,36vh,300px)]'}`}>
+    <div className={`flex flex-col gap-1.5 border-t border-line px-3 pb-2.5 pt-3 sm:px-5 ${big ? 'absolute inset-0 z-10 bg-card' : 'h-[clamp(240px,36vh,300px)] max-h-[70%] flex-none'}`}>
       <div ref={box} className={`relative flex min-h-0 flex-1 flex-col rounded-2xl border transition focus-within:ring-2 ${note ? 'border-[#6b5a2e] bg-[#1a170f] focus-within:ring-[#f8d27c]/20' : 'border-[#5b4bb8] bg-[#0b0d16] focus-within:ring-purple/25'}`}>
         {/* Hàng trên: Email / Ghi chú + người nhận, tiêu đề, số ký tự, nút phóng to */}
         <div className="flex flex-none flex-wrap items-center gap-x-3 gap-y-2 pl-3 pr-2.5 pt-2.5">
