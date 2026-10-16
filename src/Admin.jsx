@@ -863,6 +863,11 @@ export default function Admin() {
       if (s) {
         const { data } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel().catch(() => ({ data: null }))
         need = data?.nextLevel === 'aal2' && data.currentLevel !== 'aal2'
+        // Phiên lưu trong trình duyệt có thể cũ (VD vừa bật 2 bước ở máy khác): hỏi lại máy chủ danh sách thiết bị
+        if (!need && data?.currentLevel !== 'aal2') {
+          const { data: f } = await supabase.auth.mfa.listFactors().catch(() => ({ data: null }))
+          need = (f?.totp || []).some(x => x.status === 'verified')
+        }
       }
       if (n !== seq) return
       setNeedMfa(need); setSession(need ? null : s)
