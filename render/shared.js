@@ -66,7 +66,8 @@ export function mdToHtml(md = '', origin = '') {
     if (/^>\s?/.test(l)) { const q = []; while (i < lines.length && /^>\s?/.test(lines[i])) q.push(lines[i++].replace(/^>\s?/, '')); out.push(`<blockquote><p>${mdInline(q.join(' '), origin)}</p></blockquote>`); continue }
     const img = l.trim().match(/^!\[([^\]]*)\]\((https?:[^)\s]+)\)$/)
     if (img) { out.push(`<p><img src="${esc(img[2])}" alt="${esc(img[1])}"></p>`); i++; continue }
-    const p = []; while (i < lines.length && lines[i].trim() && !/^(#{1,3} |\s*[-*+] |\s*\d+\. |>|```|!\[)/.test(lines[i])) p.push(lines[i++])
+    // Dòng đầu luôn được nuốt (dù khớp mẫu khối như "![" không phải ảnh hợp lệ) để i luôn tiến, tránh lặp vô hạn
+    const p = [lines[i++]]; while (i < lines.length && lines[i].trim() && !/^(#{1,3} |\s*[-*+] |\s*\d+\. |>|```|!\[)/.test(lines[i])) p.push(lines[i++])
     out.push(`<p>${mdInline(p.join(' '), origin)}</p>`)
   }
   return out.join('\n')
