@@ -1,4 +1,5 @@
 -- Bug mẫu, trang "Mình đã test chính web này" (/kiem-thu), trang CV online (/cv).
+-- Cần hàm public.is_admin(): cài mới bằng schema.sql thì đã có; bản cũ chạy migration-admin-lockdown.sql trước.
 -- Chạy 1 lần trong Supabase → SQL Editor. Chạy lại nhiều lần cũng không sao (không tạo trùng dữ liệu).
 
 -- ===== Bảng bug mẫu (Admin → Bug mẫu) =====
@@ -26,9 +27,9 @@ create table if not exists public.bugs (
 -- Khách chỉ đọc được bug đang hiển thị; Admin đọc và ghi tất cả
 alter table public.bugs enable row level security;
 drop policy if exists "public read" on public.bugs;
-create policy "public read" on public.bugs for select using (visible = true or auth.role() = 'authenticated');
+create policy "public read" on public.bugs for select using (visible = true or public.is_admin());
 drop policy if exists "admin write" on public.bugs;
-create policy "admin write" on public.bugs for all to authenticated using (true) with check (true);
+create policy "admin write" on public.bugs for all to authenticated using (public.is_admin()) with check (public.is_admin());
 
 -- ===== Trang Kiểm thử (Admin → Trang Kiểm thử web): điểm Lighthouse, môi trường đã test, checklist, bug tự tìm =====
 alter table public.settings add column if not exists selftest jsonb not null default '{}'::jsonb;
@@ -72,7 +73,7 @@ declare
   done integer;
   ident boolean;
 begin
-  if auth.uid() is null then raise exception 'not allowed'; end if;
+  if not public.is_admin() then raise exception 'not allowed'; end if;
   if tbl not in ('settings', 'admin_settings', 'posts', 'projects', 'skills', 'jobs', 'footer_links', 'socials', 'messages', 'bugs') then
     raise exception 'table % is not restorable', tbl;
   end if;

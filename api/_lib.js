@@ -20,8 +20,13 @@ export async function homeData() {
   } catch { return null }
 }
 
-/** Địa chỉ gốc của web theo request, VD https://congminh.dev */
+// Địa chỉ cố định (giống scripts/prerender.mjs): không tin header Host / X-Forwarded-Host để tạo link canonical, sitemap, RSS
+const prod = process.env.VERCEL_PROJECT_PRODUCTION_URL
+const FIXED = (process.env.SITE_URL || (prod ? `https://${prod}` : '')).replace(/\/+$/, '')
+
+/** Địa chỉ gốc của web, VD https://congminh.dev. Chưa có SITE_URL / tên miền production (chạy local) thì lấy theo request. */
 export function originOf(request) {
+  if (FIXED) return FIXED
   const u = new URL(request.url)
   const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || u.host
   const proto = request.headers.get('x-forwarded-proto') || u.protocol.replace(':', '') || 'https'

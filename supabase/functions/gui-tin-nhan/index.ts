@@ -11,9 +11,10 @@ import { createClient } from 'npm:@supabase/supabase-js@2.49.4'
 
 // Chỉ trang web của bạn (SITE_URL) gọi được hàm này từ trình duyệt. Thêm nguồn khác (VD http://localhost:5173 khi chạy thử)
 // bằng secret ALLOWED_ORIGINS, cách nhau dấu phẩy. Chưa đặt SITE_URL thì vẫn mở cho mọi nguồn như trước.
+const allowedOrigins = () => [Deno.env.get('SITE_URL'), ...(Deno.env.get('ALLOWED_ORIGINS') || '').split(',')]
+  .map(u => { try { return u ? new URL(u.trim()).origin : '' } catch { return '' } }).filter(Boolean)
 function corsFor(req: Request) {
-  const allowed = [Deno.env.get('SITE_URL'), ...(Deno.env.get('ALLOWED_ORIGINS') || '').split(',')]
-    .map(u => { try { return u ? new URL(u.trim()).origin : '' } catch { return '' } }).filter(Boolean)
+  const allowed = allowedOrigins()
   const origin = req.headers.get('Origin') || ''
   return {
     'Access-Control-Allow-Origin': !allowed.length ? '*' : allowed.includes(origin) ? origin : allowed[0],
@@ -170,7 +171,7 @@ async function draftReply(db: any, b: any) {
   const lang = b?.lang === 'en' ? 'tiếng Anh' : b?.lang === 'vi' ? 'tiếng Việt' : 'cùng ngôn ngữ người gửi đã viết'
   const hint = String(b?.hint || '').trim().slice(0, 500)
   try {
-    const { default: Anthropic } = await import('npm:@anthropic-ai/sdk')
+    const { default: Anthropic } = await import('npm:@anthropic-ai/sdk@0.131.0')
     const client = new Anthropic({ apiKey: key })
     const res: any = await client.beta.messages.create({
       model: 'claude-opus-5-5',
@@ -280,6 +281,12 @@ async function handle(req: Request): Promise<Response> {
   if (ip) form.append('remoteip', ip)
   const check = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', { method: 'POST', body: form }).then(r => r.json()).catch(() => null)
   if (!check?.success) return json(400, { code: 'captcha', error: 'Xác minh chống spam chưa thành công, vui lòng thử lại.' })
+  // Token phải được giải trên chính web này (SITE_URL / ALLOWED_ORIGINS), không dùng lại token lấy từ trang khác.
+  // Khóa thử của Cloudflare (1x000…AA) luôn trả hostname example.com nên bỏ qua bước này.
+  const hosts = allowedOrigins().map(o => new URL(o).hostname)
+  if (hosts.length && !/^[123]x0+AA$/.test(secret) && !hosts.includes(String(check.hostname || ''))) {
+    return json(400, { code: 'captcha', error: 'Xác minh chống spam chưa thành công, vui lòng thử lại.' })
+  }
 
   const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } })
   const { error } = await db.from('messages').insert({

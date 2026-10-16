@@ -1,4 +1,5 @@
 -- ===== Sao lưu / khôi phục (Admin → Cài đặt → Sao lưu) =====
+-- Cần hàm public.is_admin(): cài mới bằng schema.sql thì đã có; bản cũ chạy migration-admin-lockdown.sql trước.
 -- Khôi phục giữ nguyên id cũ (link bài /blog/ten-bai-12 không đổi). KHÔNG bao giờ xóa dòng nào.
 -- overwrite = false: chỉ thêm lại dòng đã mất (id chưa có).  overwrite = true: thêm lại + ghi đè dòng cùng id.
 -- Chỉ Admin đã đăng nhập gọi được.
@@ -13,7 +14,7 @@ declare
   done integer;
   ident boolean;
 begin
-  if auth.uid() is null then raise exception 'not allowed'; end if;
+  if not public.is_admin() then raise exception 'not allowed'; end if;
   if tbl not in ('settings', 'admin_settings', 'posts', 'projects', 'skills', 'jobs', 'footer_links', 'socials', 'messages') then
     raise exception 'table % is not restorable', tbl;
   end if;

@@ -77,6 +77,9 @@ create policy "admin xoa luot xem" on public.page_views for delete to authentica
 
 -- ===== Kho ảnh "media": chỉ Admin tải lên / sửa / xoá, tối đa 10 MB mỗi file =====
 update storage.buckets set file_size_limit = 10485760 where id = 'media';
+drop policy if exists "media public read" on storage.objects; -- không cho người lạ liệt kê kho (link công khai vẫn chạy)
+drop policy if exists "media admin read" on storage.objects;
+create policy "media admin read" on storage.objects for select to authenticated using (bucket_id = 'media' and public.is_admin());
 drop policy if exists "media admin write" on storage.objects;
 drop policy if exists "media admin update" on storage.objects;
 drop policy if exists "media admin delete" on storage.objects;
