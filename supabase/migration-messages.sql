@@ -1,4 +1,5 @@
 -- Chạy file này để có Hộp thư: lưu tin nhắn từ form Liên hệ (Admin → Tin nhắn).
+-- Cần hàm public.is_admin(): cài mới bằng schema.sql thì đã có; bản cũ chạy migration-admin-lockdown.sql trước.
 create table if not exists public.messages (
   id bigint generated always as identity primary key,
   created_at timestamptz not null default now(),
@@ -12,7 +13,7 @@ create table if not exists public.messages (
 alter table public.messages enable row level security;
 -- Khách KHÔNG đọc/ghi trực tiếp được; tin nhắn chỉ vào qua hàm gui-tin-nhan (đã kiểm tra chống spam).
 drop policy if exists "admin all" on public.messages;
-create policy "admin all" on public.messages for all to authenticated using (true) with check (true);
+create policy "admin all" on public.messages for all to authenticated using (public.is_admin()) with check (public.is_admin());
 -- Bật Realtime để Admin nhận thông báo ngay khi có tin nhắn mới
 do $$ begin
   if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'messages') then

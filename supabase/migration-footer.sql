@@ -1,4 +1,5 @@
 -- Dành cho người ĐÃ chạy schema.sql trước đó: chỉ chạy file này để thêm phần footer.
+-- Cần hàm public.is_admin(): cài mới bằng schema.sql thì đã có; bản cũ chạy migration-admin-lockdown.sql trước.
 
 -- ===== Footer: menu, mạng xã hội, thông tin chung =====
 create table if not exists public.footer_links (
@@ -37,7 +38,7 @@ begin
     execute format('drop policy if exists "public read" on public.%I', t);
     execute format('drop policy if exists "admin write" on public.%I', t);
     execute format('create policy "public read" on public.%I for select using (true)', t);
-    execute format('create policy "admin write" on public.%I for all to authenticated using (true) with check (true)', t);
+    execute format('create policy "admin write" on public.%I for all to authenticated using (public.is_admin()) with check (public.is_admin())', t);
   end loop;
 end $$;
 

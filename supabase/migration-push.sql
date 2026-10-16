@@ -1,4 +1,5 @@
 -- ===== Thông báo đẩy (Web Push) cho Admin =====
+-- Cần hàm public.is_admin(): cài mới bằng schema.sql thì đã có; bản cũ chạy migration-admin-lockdown.sql trước.
 -- Mỗi thiết bị bấm "Bật trên thiết bị này" ở Admin → Cài đặt → Thông báo lưu 1 dòng.
 -- Hàm gui-tin-nhan / nhan-bai đọc bảng này (bằng service role) để gửi thông báo kể cả khi đã đóng Admin.
 create table if not exists public.push_subscriptions (
@@ -11,4 +12,4 @@ create table if not exists public.push_subscriptions (
 );
 alter table public.push_subscriptions enable row level security;
 drop policy if exists "admin all" on public.push_subscriptions;
-create policy "admin all" on public.push_subscriptions for all to authenticated using (true) with check (true);
+create policy "admin all" on public.push_subscriptions for all to authenticated using (public.is_admin()) with check (public.is_admin());

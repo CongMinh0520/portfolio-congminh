@@ -1,5 +1,22 @@
 -- Chạy toàn bộ file này trong Supabase → SQL Editor → New query → Run
 
+-- ===== Quyền Admin =====
+-- Chỉ tài khoản có trong bảng admins mới được ghi nội dung, đọc tin nhắn, khôi phục sao lưu.
+-- Bảng còn trống sau khi cài: tạo tài khoản (Authentication → Users) rồi chạy migration-admin-lockdown.sql để thêm email Admin.
+create table if not exists public.admins (
+  user_id uuid primary key references auth.users (id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+alter table public.admins enable row level security;
+create or replace function public.is_admin()
+returns boolean
+language sql stable security definer set search_path = public
+as $$
+  select exists (select 1 from public.admins where user_id = auth.uid());
+$$;
+revoke all on function public.is_admin() from public;
+grant execute on function public.is_admin() to anon, authenticated;
+
 create table if not exists public.projects (
   id bigint generated always as identity primary key,
   sort int not null default 0,
@@ -36,7 +53,7 @@ create table if not exists public.posts (
   created_at timestamptz default now()
 );
 
--- Bảo mật (Row Level Security): ai cũng ĐỌC được, chỉ người đã đăng nhập mới GHI được
+-- Bảo mật (Row Level Security): ai cũng ĐỌC được, chỉ Admin (bảng admins) mới GHI được
 do $$
 declare t text;
 begin
@@ -45,7 +62,7 @@ begin
     execute format('drop policy if exists "public read" on public.%I', t);
     execute format('drop policy if exists "admin write" on public.%I', t);
     execute format('create policy "public read" on public.%I for select using (true)', t);
-    execute format('create policy "admin write" on public.%I for all to authenticated using (true) with check (true)', t);
+    execute format('create policy "admin write" on public.%I for all to authenticated using (public.is_admin()) with check (public.is_admin())', t);
   end loop;
 end $$;
 
@@ -88,7 +105,7 @@ begin
     execute format('drop policy if exists "public read" on public.%I', t);
     execute format('drop policy if exists "admin write" on public.%I', t);
     execute format('create policy "public read" on public.%I for select using (true)', t);
-    execute format('create policy "admin write" on public.%I for all to authenticated using (true) with check (true)', t);
+    execute format('create policy "admin write" on public.%I for all to authenticated using (public.is_admin()) with check (public.is_admin())', t);
   end loop;
 end $$;
 
@@ -146,10 +163,12 @@ drop policy if exists "media public read" on storage.objects;
 drop policy if exists "media admin write" on storage.objects;
 drop policy if exists "media admin update" on storage.objects;
 drop policy if exists "media admin delete" on storage.objects;
-create policy "media public read" on storage.objects for select using (bucket_id = 'media');
-create policy "media admin write" on storage.objects for insert to authenticated with check (bucket_id = 'media');
-create policy "media admin update" on storage.objects for update to authenticated using (bucket_id = 'media');
-create policy "media admin delete" on storage.objects for delete to authenticated using (bucket_id = 'media');
+-- Không cho người lạ liệt kê kho: link ảnh công khai (/object/public/...) vẫn chạy vì bucket public, chỉ Admin xem được danh sách file
+drop policy if exists "media admin read" on storage.objects;
+create policy "media admin read" on storage.objects for select to authenticated using (bucket_id = 'media' and public.is_admin());
+create policy "media admin write" on storage.objects for insert to authenticated with check (bucket_id = 'media' and public.is_admin());
+create policy "media admin update" on storage.objects for update to authenticated using (bucket_id = 'media' and public.is_admin());
+create policy "media admin delete" on storage.objects for delete to authenticated using (bucket_id = 'media' and public.is_admin());
 
 -- ===== Nhận bài tự động (Easy AI) =====
 alter table public.posts add column if not exists external_key text;
@@ -162,7 +181,7 @@ do $$ begin
   end if;
 end $$;
 drop policy if exists "public read" on public.posts;
-create policy "public read" on public.posts for select using (visible = true or auth.role() = 'authenticated');
+create policy "public read" on public.posts for select using (visible = true or public.is_admin());
 
 -- ===== Thẻ bài viết =====
 alter table public.posts add column if not exists tags text[] not null default '{}';
@@ -181,7 +200,7 @@ create table if not exists public.messages (
 alter table public.messages enable row level security;
 -- Khách KHÔNG đọc/ghi trực tiếp được; tin nhắn chỉ vào qua hàm gui-tin-nhan (đã kiểm tra chống spam).
 drop policy if exists "admin all" on public.messages;
-create policy "admin all" on public.messages for all to authenticated using (true) with check (true);
+create policy "admin all" on public.messages for all to authenticated using (public.is_admin()) with check (public.is_admin());
 -- Bật Realtime để Admin nhận thông báo ngay khi có tin nhắn mới
 do $$ begin
   if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'messages') then
@@ -222,7 +241,7 @@ create table if not exists public.admin_settings (
 );
 alter table public.admin_settings enable row level security;
 drop policy if exists "admin all" on public.admin_settings;
-create policy "admin all" on public.admin_settings for all to authenticated using (true) with check (true);
+create policy "admin all" on public.admin_settings for all to authenticated using (public.is_admin()) with check (public.is_admin());
 alter table public.admin_settings add column if not exists reply jsonb not null default '{}'::jsonb; -- mẫu trả lời nhanh + chữ ký
 insert into public.admin_settings (id) values (1) on conflict (id) do nothing;
 -- Bài viết: bản English + "bản gốc ở nơi khác là bản chính"
@@ -249,9 +268,9 @@ drop policy if exists "khach ghi luot xem" on public.page_views;
 create policy "khach ghi luot xem" on public.page_views for insert to anon
   with check (created_at between now() - interval '5 minutes' and now() + interval '5 minutes');
 drop policy if exists "admin doc luot xem" on public.page_views;
-create policy "admin doc luot xem" on public.page_views for select to authenticated using (true);
+create policy "admin doc luot xem" on public.page_views for select to authenticated using (public.is_admin());
 drop policy if exists "admin xoa luot xem" on public.page_views;
-create policy "admin xoa luot xem" on public.page_views for delete to authenticated using (true);
+create policy "admin xoa luot xem" on public.page_views for delete to authenticated using (public.is_admin());
 
 -- Số liệu cho dashboard: days ngày gần nhất (tính theo giờ Việt Nam) và kỳ trước đó để so sánh.
 create or replace function public.view_stats(days integer default 30)
@@ -320,7 +339,7 @@ declare
   done integer;
   ident boolean;
 begin
-  if auth.uid() is null then raise exception 'not allowed'; end if;
+  if not public.is_admin() then raise exception 'not allowed'; end if;
   if tbl not in ('settings', 'admin_settings', 'posts', 'projects', 'skills', 'jobs', 'footer_links', 'socials', 'messages', 'bugs') then
     raise exception 'table % is not restorable', tbl;
   end if;
@@ -366,15 +385,14 @@ create table if not exists public.push_subscriptions (
 );
 alter table public.push_subscriptions enable row level security;
 drop policy if exists "admin all" on public.push_subscriptions;
-create policy "admin all" on public.push_subscriptions for all to authenticated using (true) with check (true);
+create policy "admin all" on public.push_subscriptions for all to authenticated using (public.is_admin()) with check (public.is_admin());
 
 -- ===== Bug mẫu, trang Kiểm thử, CV online =====
 -- Bảng bugs, cột settings.selftest, hàm get_home và 3 bug mẫu nằm ở supabase/migration-qa.sql: cài mới thì chạy thêm file đó sau file này.
 
--- ===== Khoá quyền Admin (BẮT BUỘC, chạy CUỐI CÙNG) =====
--- Các policy "admin write" / "admin all" ở trên cho MỌI tài khoản đã đăng nhập quyền ghi.
--- Sau khi tạo tài khoản Admin (Authentication → Users) và chạy migration-qa.sql,
--- chạy supabase/migration-admin-lockdown.sql để chỉ tài khoản Admin mới được ghi / đọc tin nhắn / khôi phục sao lưu.
+-- ===== Thêm tài khoản Admin (BẮT BUỘC) =====
+-- Các policy ở trên chỉ cho tài khoản trong bảng admins (đang trống). Sau khi tạo tài khoản Admin (Authentication → Users)
+-- và chạy migration-qa.sql, chạy supabase/migration-admin-lockdown.sql (sửa email ở đầu file) để thêm bạn vào bảng admins.
 -- Sau đó: migration-xuat-ban.sql (nút Xuất bản trong Admin) và migration-gioi-han-luot-xem.sql (chống ghi lượt xem ảo).
 
 -- ===== Nội dung mẫu (Manual QA Tester) — chỉ dùng khi cài mới; sửa / xóa trong Admin =====

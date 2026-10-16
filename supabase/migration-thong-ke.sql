@@ -1,4 +1,5 @@
 -- ===== Thống kê lượt xem (Admin → Tổng quan) =====
+-- Cần hàm public.is_admin(): cài mới bằng schema.sql thì đã có; bản cũ chạy migration-admin-lockdown.sql trước.
 -- Mỗi lượt xem trang chủ / blog / bài / dự án ghi 1 dòng. Không lưu IP; "visitor" là mã ngẫu nhiên trong trình duyệt khách.
 -- Khách chỉ được GHI (không đọc được); chỉ Admin đã đăng nhập đọc số liệu qua hàm view_stats.
 create table if not exists public.page_views (
@@ -18,9 +19,9 @@ drop policy if exists "khach ghi luot xem" on public.page_views;
 create policy "khach ghi luot xem" on public.page_views for insert to anon
   with check (created_at between now() - interval '5 minutes' and now() + interval '5 minutes');
 drop policy if exists "admin doc luot xem" on public.page_views;
-create policy "admin doc luot xem" on public.page_views for select to authenticated using (true);
+create policy "admin doc luot xem" on public.page_views for select to authenticated using (public.is_admin());
 drop policy if exists "admin xoa luot xem" on public.page_views;
-create policy "admin xoa luot xem" on public.page_views for delete to authenticated using (true);
+create policy "admin xoa luot xem" on public.page_views for delete to authenticated using (public.is_admin());
 
 -- Số liệu cho dashboard: days ngày gần nhất (tính theo giờ Việt Nam) và kỳ trước đó để so sánh.
 create or replace function public.view_stats(days integer default 30)
