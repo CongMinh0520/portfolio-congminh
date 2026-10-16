@@ -216,7 +216,6 @@ export default {
   'Chỉ áp dụng cho thư này': 'Only for this email',
   'Bấm để sửa chữ ký': 'Click to edit signature',
   'Sửa chữ ký': 'Edit signature',
-  'Hiện tin được trích dẫn': 'Show quoted message',
   'Trích dẫn': 'Quote',
   'Đính kèm file': 'Attach file',
   'File đã dùng trước đây': 'Previously used files',
