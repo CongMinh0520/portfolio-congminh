@@ -116,10 +116,12 @@ export default function ReplyComposer({ thread, quoteMsg, cfg, library, fromName
   const [hi, setHi] = useState(0)
   const [busy, setBusy] = useState('')
   const [ai, setAi] = useState({ intent: 'thanks', lang: 'auto', hint: '' })
-  const ta = useRef(null), box = useRef(null), fileIn = useRef(null)
+  const ta = useRef(null), box = useRef(null), fileIn = useRef(null), quoteBox = useRef(null)
   useDismiss(box, !!open, () => { setOpen(''); setSlash(null) })
   useEffect(() => { setSign(cfg.signature_on !== false) }, [cfg.signature_on])
   // Đổi hội thoại: về chế độ Email, đóng popover
+  // Bấm "+ Trích dẫn" hay "···": mở luôn trích dẫn và cuộn tới nó (nằm dưới ô soạn, dễ bị khuất)
+  useEffect(() => { if (quoteOpen) quoteBox.current?.scrollIntoView({ block: 'nearest' }) }, [quoteOpen])
   useEffect(() => { setMode('email'); setOpen(''); setSlash(null); setEditSubject(false); setQuoteOpen(false); setEditSig(false) }, [key])
 
   const patch = p => setDrafts(all => {
@@ -380,7 +382,7 @@ export default function ReplyComposer({ thread, quoteMsg, cfg, library, fromName
           </div>
         )}
         {!note && quote && quoteMsg && quoteOpen && (
-          <div className="mx-3 mb-1.5 rounded-lg border-l-2 border-[#3a3f5a] bg-white/[0.03] py-1.5 pl-3 pr-2 text-[13px] text-muted">
+          <div ref={quoteBox} className="mx-3 mb-1.5 rounded-lg border-l-2 border-[#3a3f5a] bg-white/[0.03] py-1.5 pl-3 pr-2 text-[13px] text-muted">
             <div className="flex items-center gap-2 text-xs"><span className="min-w-0 flex-1 truncate">{quoteBody.when}, {quoteMsg.name}:</span>
               <button type="button" onClick={() => { setQuote(false); setQuoteOpen(false) }} className="flex-none font-medium text-[#b5aaff] hover:text-white">{a('Bỏ trích dẫn')}</button></div>
             <p className="mt-1 line-clamp-4 whitespace-pre-wrap break-words">{quoteMsg.message}</p>
@@ -470,7 +472,7 @@ export default function ReplyComposer({ thread, quoteMsg, cfg, library, fromName
             <span className="mx-1 h-5 w-px bg-[#2a2e45]" aria-hidden="true" />
             {quoteMsg && quote && !quoteOpen && <button type="button" onClick={() => setQuoteOpen(true)} title={a('Hiện tin được trích dẫn')} aria-label={a('Hiện tin được trích dẫn')}
               className={`${chip} tracking-[2px]`}>···</button>}
-            {quoteMsg && !quote && <button type="button" onClick={() => setQuote(true)} className={chip}>+ {a('Trích dẫn')}</button>}
+            {quoteMsg && !quote && <button type="button" onClick={() => { setQuote(true); setQuoteOpen(true) }} className={chip}>+ {a('Trích dẫn')}</button>}
             {(!sign || !sigText) && !editSig && <button type="button" onClick={() => { setSign(true); if (!sigText) setEditSig(true) }} className={chip}>+ {a('Chữ ký')}</button>}
           </>}
 
