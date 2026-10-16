@@ -8,6 +8,7 @@ const grad = 'bg-gradient-to-r from-pink to-purple'
 const btn = 'inline-flex items-center justify-center gap-2 rounded-lg px-3 py-1.5 text-sm font-semibold transition disabled:opacity-50'
 const ghost = `${btn} border border-line text-[#c9cbd8] hover:border-[#3a3f5a] hover:bg-white/5 hover:text-white`
 const input = 'w-full rounded-lg border border-line bg-[#0b0d16] px-3 py-2 text-sm outline-none transition focus:border-purple focus:ring-2 focus:ring-purple/25'
+const chip = 'h-7 rounded-full border border-dashed border-[#343852] px-2.5 text-xs text-[#9a9eb8] transition hover:border-[#4a4f6e] hover:text-white'
 const pop = 'absolute bottom-full z-40 mb-2 rounded-xl border border-line bg-[#0d0f1a] p-2 shadow-[0_20px_60px_#000000b0]'
 
 const ICONS = {
@@ -298,24 +299,24 @@ export default function ReplyComposer({ thread, quoteMsg, cfg, library, fromName
   const note = mode === 'note'
   const toggle = k => setOpen(o => (o === k ? '' : k))
   return (
-    <div className="flex-none border-t border-line p-3 sm:px-4">
-      <div ref={box} className={`relative flex flex-col rounded-2xl border transition focus-within:ring-2 ${big ? 'h-[min(72vh,640px)]' : 'h-[clamp(232px,40vh,340px)]'} ${note ? 'border-[#f8d27c]/40 bg-[#f8d27c]/[0.06] focus-within:ring-[#f8d27c]/20' : 'border-line bg-[#0b0d16] focus-within:border-purple/70 focus-within:ring-purple/20'}`}>
-        {/* Hàng trên: Email / Ghi chú + người nhận, tiêu đề */}
-        <div className="flex flex-none flex-wrap items-center gap-x-3 gap-y-2 pl-3 pr-2 pt-2.5">
-          <div role="tablist" aria-label={a('Kiểu trả lời')} className="inline-flex rounded-full bg-white/[0.06] p-0.5 text-[13px]">
+    <div className={`flex flex-none flex-col gap-1.5 border-t border-line px-3 pb-2.5 pt-3 sm:px-5 ${big ? 'h-[min(76vh,680px)]' : 'h-[clamp(240px,36vh,300px)]'}`}>
+      <div ref={box} className={`relative flex min-h-0 flex-1 flex-col rounded-2xl border transition focus-within:ring-2 ${note ? 'border-[#6b5a2e] bg-[#1a170f] focus-within:ring-[#f8d27c]/20' : 'border-[#5b4bb8] bg-[#0b0d16] focus-within:ring-purple/25'}`}>
+        {/* Hàng trên: Email / Ghi chú + người nhận, tiêu đề, số ký tự, nút phóng to */}
+        <div className="flex flex-none flex-wrap items-center gap-x-3 gap-y-2 pl-3 pr-2.5 pt-2.5">
+          <div role="tablist" aria-label={a('Kiểu trả lời')} className="inline-flex rounded-full bg-[#1a1d2e] p-0.5 text-[13px]">
             {[['email', 'mail', a('Email')], ['note', 'note', a('Ghi chú')]].map(([k, ic, l]) => (
               <button key={k} role="tab" type="button" aria-selected={mode === k} onClick={() => { setMode(k); ta.current?.focus() }}
-                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-medium transition ${mode === k ? (k === 'note' ? 'bg-[#f8d27c]/20 text-[#f8d27c]' : 'bg-white/10 text-white') : 'text-muted hover:text-white'}`}>
+                className={`inline-flex h-[30px] items-center gap-1.5 rounded-full px-3 font-semibold transition ${mode === k ? (k === 'note' ? 'bg-[#3a321a] text-[#f8d27c]' : 'bg-[#2a2e45] text-white') : 'text-[#9a9eb8] hover:text-white'}`}>
                 <Icon d={ic} className="size-3.5" />{l}
               </button>
             ))}
           </div>
-          {note ? <span className="text-xs text-[#f8d27c]/80">{a('Chỉ Admin thấy, không gửi cho khách.')}</span> : (
+          {note ? <span className="min-w-0 flex-1 text-[13px] text-[#f8d27c]">{a('Chỉ Admin thấy, không gửi cho khách.')}</span> : (
             // Email người nhận luôn hiện đủ (gửi CV phải chắc đúng người); tiêu đề cắt gọn 1 dòng, màn hẹp thì xuống dòng riêng
-            <div className="flex min-w-0 flex-1 basis-full flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-muted sm:basis-0">
+            <div className="flex min-w-0 flex-1 basis-full flex-wrap items-center gap-x-1.5 gap-y-1 text-[13px] text-[#9a9eb8] sm:basis-0">
               <span className="flex min-w-0 items-center gap-1.5">
                 <span className="flex-none">{a('Tới')}</span>
-                <span className="min-w-0 break-all rounded-md bg-white/[0.06] px-2 py-0.5 text-[#dfe0ea]">{thread.email}</span>
+                <span className="min-w-0 break-all rounded-md bg-[#1a1d2e] px-2 py-0.5 text-[#dfe0ea]">{thread.email}</span>
               </span>
               <span className="flex min-w-0 basis-full items-center gap-1.5 sm:basis-0 sm:flex-1">
                 <span className="hidden flex-none sm:inline">·</span>
@@ -328,8 +329,9 @@ export default function ReplyComposer({ thread, quoteMsg, cfg, library, fromName
               </span>
             </div>
           )}
+          {text.length > 0 && <span className="ml-auto flex-none text-xs tabular-nums text-[#8b8fa8]">{a('{n} ký tự', { n: text.length })}</span>}
           <button type="button" onClick={() => { setBig(v => !v); ta.current?.focus() }} title={big ? a('Thu nhỏ khung soạn') : a('Mở rộng khung soạn')} aria-label={big ? a('Thu nhỏ khung soạn') : a('Mở rộng khung soạn')} aria-pressed={big}
-            className="ml-auto grid size-8 flex-none place-items-center rounded-lg text-muted transition hover:bg-white/10 hover:text-white">
+            className={`${text.length ? '' : 'ml-auto'} grid size-8 flex-none place-items-center rounded-lg text-[#c9cbd8] transition hover:bg-white/10 hover:text-white`}>
             <Icon d={big ? 'M4 14h6v6 M20 10h-6V4 M14 10l7-7 M3 21l7-7' : 'M14 4h6v6 M10 20H4v-6 M20 4l-7 7 M4 20l7-7'} /></button>
         </div>
 
@@ -348,7 +350,7 @@ export default function ReplyComposer({ thread, quoteMsg, cfg, library, fromName
         )}
         <textarea ref={ta} value={text} onChange={onChange} onKeyDown={onKey} aria-label={note ? a('Nội dung ghi chú') : a('Nội dung thư trả lời')}
           placeholder={note ? a('Ghi chú cho riêng mình về hội thoại này…') : a('Viết trả lời cho {name}… (gõ / để chèn mẫu)', { name: thread.name })}
-          className="block min-h-[88px] w-full flex-1 resize-none overflow-y-auto bg-transparent px-3 py-2.5 text-[15px] leading-relaxed text-[#e6e7f0] outline-none placeholder:text-[#7d81a0]" />
+          className="block min-h-[72px] w-full flex-1 resize-none overflow-y-auto bg-transparent px-3.5 py-2.5 text-[15px] leading-[1.6] text-[#e6e7f0] outline-none placeholder:text-[#7d81a0]" />
         <div className="flex-none">
 
         {/* Như Gmail: chữ ký hiện mờ cuối thư (× để bỏ), trích dẫn thu gọn thành "···" (bấm để xem / bỏ) */}
@@ -382,14 +384,6 @@ export default function ReplyComposer({ thread, quoteMsg, cfg, library, fromName
             <div className="flex items-center gap-2 text-xs"><span className="min-w-0 flex-1 truncate">{quoteBody.when}, {quoteMsg.name}:</span>
               <button type="button" onClick={() => { setQuote(false); setQuoteOpen(false) }} className="flex-none font-medium text-[#b5aaff] hover:text-white">{a('Bỏ trích dẫn')}</button></div>
             <p className="mt-1 line-clamp-4 whitespace-pre-wrap break-words">{quoteMsg.message}</p>
-          </div>
-        )}
-        {!note && ((quoteMsg && (!quote || !quoteOpen)) || ((!sign || !sigText) && !editSig)) && (
-          <div className="flex flex-wrap items-center gap-1.5 px-3 pb-1.5">
-            {quoteMsg && quote && !quoteOpen && <button type="button" onClick={() => setQuoteOpen(true)} title={a('Hiện tin được trích dẫn')} aria-label={a('Hiện tin được trích dẫn')}
-              className="rounded-full border border-line px-2.5 text-sm leading-5 tracking-[2px] text-muted transition hover:border-[#3a3f5a] hover:text-white">···</button>}
-            {quoteMsg && !quote && <button type="button" onClick={() => setQuote(true)} className="rounded-full border border-dashed border-line px-2.5 py-0.5 text-xs text-muted transition hover:text-white">+ {a('Trích dẫn')}</button>}
-            {(!sign || !sigText) && !editSig && <button type="button" onClick={() => { setSign(true); if (!sigText) setEditSig(true) }} className="rounded-full border border-dashed border-line px-2.5 py-0.5 text-xs text-muted transition hover:text-white">+ {a('Chữ ký')}</button>}
           </div>
         )}
         {files.length > 0 && <div className="flex flex-wrap gap-1.5 px-3 pb-1 pt-1">{files.map(f => <FileChip key={f.url} f={f} onRemove={f.uploading ? null : () => patch({ files: files.filter(x => x.url !== f.url) })} />)}</div>}
@@ -471,6 +465,14 @@ export default function ReplyComposer({ thread, quoteMsg, cfg, library, fromName
           <RoundBtn label={fmt ? a('Ẩn thanh định dạng') : a('Định dạng chữ')} active={fmt} onClick={() => setFmt(v => !v)}>
             <span className="text-[13px] font-semibold">Aa</span>
           </RoundBtn>
+          {/* Chữ ký / trích dẫn: chip nhỏ ngay trên hàng nút, không chiếm chỗ ô soạn */}
+          {!note && ((quoteMsg && (!quote || !quoteOpen)) || ((!sign || !sigText) && !editSig)) && <>
+            <span className="mx-1 h-5 w-px bg-[#2a2e45]" aria-hidden="true" />
+            {quoteMsg && quote && !quoteOpen && <button type="button" onClick={() => setQuoteOpen(true)} title={a('Hiện tin được trích dẫn')} aria-label={a('Hiện tin được trích dẫn')}
+              className={`${chip} tracking-[2px]`}>···</button>}
+            {quoteMsg && !quote && <button type="button" onClick={() => setQuote(true)} className={chip}>+ {a('Trích dẫn')}</button>}
+            {(!sign || !sigText) && !editSig && <button type="button" onClick={() => { setSign(true); if (!sigText) setEditSig(true) }} className={chip}>+ {a('Chữ ký')}</button>}
+          </>}
 
           <span className="flex-1" />
           <span className="relative">
@@ -484,12 +486,12 @@ export default function ReplyComposer({ thread, quoteMsg, cfg, library, fromName
           {/* Nút Gửi + menu các cách gửi khác (Gửi và đóng, Gmail, app email) */}
           <span className="relative inline-flex">
             <button type="button" onClick={() => submit(false)} disabled={!!busy} title="Ctrl + Enter"
-              className={`${btn} h-9 rounded-r-none pr-2.5 ${note ? 'bg-[#f8d27c] text-[#2a2208] hover:brightness-110' : grad}`}>
-              {busy === 'send' ? <span className={`size-4 animate-spin rounded-full border-2 border-t-transparent ${note ? 'border-[#2a2208]' : 'border-white'}`} /> : <Icon d={note ? 'note' : 'send'} />}
+              className={`${btn} h-10 rounded-r-none pr-3 pl-4 text-[15px] text-white hover:brightness-110 ${note ? 'bg-[#8a6a1c]' : 'bg-[#b63fbf]'}`}>
+              {busy === 'send' ? <span className={`size-4 animate-spin rounded-full border-2 border-t-transparent border-white`} /> : <Icon d={note ? 'note' : 'send'} />}
               {note ? a('Lưu ghi chú') : a('Gửi')}
             </button>
             <button type="button" onClick={() => toggle('more')} disabled={!!busy} aria-label={note ? a('Cách lưu khác') : a('Cách gửi khác')} aria-expanded={open === 'more'}
-              className={`${btn} h-9 rounded-l-none border-l px-1.5 ${note ? 'border-[#2a2208]/25 bg-[#f8d27c] text-[#2a2208] hover:brightness-110' : `${grad} border-white/25`}`}><Icon d="down" className="size-3.5" /></button>
+              className={`${btn} h-10 w-9 justify-center rounded-l-none border-l border-white/25 px-0 text-white hover:brightness-110 ${note ? 'bg-[#8a6a1c]' : 'bg-[#b63fbf]'}`}><Icon d="down" className="size-3.5" /></button>
             {open === 'more' && (
               <div className={`${pop} right-0 w-64 p-1.5`}>
                 {[[note ? a('Lưu ghi chú') : a('Gửi'), 'Ctrl + Enter', () => { setOpen(''); submit(false) }],
@@ -505,7 +507,7 @@ export default function ReplyComposer({ thread, quoteMsg, cfg, library, fromName
           </span>
         </div>
       </div>
-      <p className="mt-1.5 hidden px-1 text-[11px] text-muted sm:block">{a('Ctrl + Enter để gửi · Ctrl + B đậm · Ctrl + I nghiêng · khách trả lời thư sẽ về email của bạn')}</p>
+      <p className="hidden flex-none px-1 text-xs text-[#8b8fa8] sm:block">{a('Ctrl + Enter để gửi · Ctrl + B đậm · Ctrl + I nghiêng · gõ / để chèn mẫu')}</p>
     </div>
   )
 }
