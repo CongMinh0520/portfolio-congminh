@@ -202,6 +202,8 @@ export default {
   'Chữ ký': 'Signature',
   'Bỏ chữ ký khỏi thư này': 'Remove signature from this email',
   'Bỏ trích dẫn': 'Remove quote',
+  'Mở rộng khung soạn': 'Expand composer',
+  'Thu nhỏ khung soạn': 'Shrink composer',
   'Đã lưu chữ ký mặc định': 'Default signature saved',
   'Xong': 'Done',
   'Lưu làm chữ ký mặc định': 'Save as default signature',
