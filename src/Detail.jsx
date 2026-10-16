@@ -84,7 +84,8 @@ export function Markdown({ text = '' }) {
     }
     const img = l.trim().match(/^!\[([^\]]*)\]\((https?:[^)\s]+)\)$/)
     if (img) { blocks.push(<img key={i} src={img[2]} alt={unesc(img[1])} loading="lazy" decoding="async" className="w-full rounded-xl border border-line bg-[#0b0d16]" />); i++; continue }
-    const para = []; while (i < lines.length && lines[i].trim() && !/^(#{1,3} |\s*[-*+] |\s*\d+\. |>|```|!\[)/.test(lines[i])) para.push(lines[i++])
+    // Dòng đầu luôn được nuốt (dù khớp mẫu khối như "![" không phải ảnh hợp lệ) để i luôn tiến, tránh lặp vô hạn
+    const para = [lines[i++]]; while (i < lines.length && lines[i].trim() && !/^(#{1,3} |\s*[-*+] |\s*\d+\. |>|```|!\[)/.test(lines[i])) para.push(lines[i++])
     blocks.push(<p key={i}>{inline(para.join(' '), i)}</p>)
   }
   return <div className="space-y-5 text-[16.5px] leading-[1.8] text-[#c9cbd8]">{blocks}</div>
