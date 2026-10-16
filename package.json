@@ -6,9 +6,7 @@
     "dev": "vite",
     "build": "vite build && node scripts/prerender.mjs",
     "preview": "vite preview",
-    "build:single": "SINGLEFILE=1 vite build",
-    "test:xss": "node scripts/security/xss-probe.mjs",
-    "test:rls": "bash scripts/security/rls-probe.sh"
+    "build:single": "SINGLEFILE=1 vite build"
   },
   "keywords": [],
   "author": "",

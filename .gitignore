@@ -9,6 +9,10 @@ dist
 # Supabase CLI (tự tạo khi chạy npx supabase)
 supabase/.temp/
 
+# Hướng dẫn bảo mật: giữ local, không công khai (là bản đồ bề mặt tấn công)
+AGENTS.md
+scripts/security/
+
 # Secret / khóa riêng (phòng hờ)
 *.pem
 *.key
