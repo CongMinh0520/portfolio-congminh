@@ -130,8 +130,8 @@ export default function ReplyComposer({ thread, quoteMsg, cfg, library, fromName
     return next
   })
   const setText = v => patch({ text: v })
-  // Textarea tự giãn theo nội dung
-  useEffect(() => { const el = ta.current; if (!el) return; el.style.height = 'auto'; el.style.height = `${Math.min(el.scrollHeight, 288)}px` }, [text, key, mode])
+  // Khung soạn cao cố định (thư dài thì cuộn bên trong), nút ⤢ để phóng to khi cần
+  const [big, setBig] = useState(false)
 
   const templates = cfg.templates || defaultTemplates(library.find(f => f.cv))
   const tplShown = useMemo(() => {
@@ -298,10 +298,10 @@ export default function ReplyComposer({ thread, quoteMsg, cfg, library, fromName
   const note = mode === 'note'
   const toggle = k => setOpen(o => (o === k ? '' : k))
   return (
-    <div className="border-t border-line p-3 sm:px-4">
-      <div ref={box} className={`relative rounded-2xl border transition focus-within:ring-2 ${note ? 'border-[#f8d27c]/40 bg-[#f8d27c]/[0.06] focus-within:ring-[#f8d27c]/20' : 'border-line bg-[#0b0d16] focus-within:border-purple/70 focus-within:ring-purple/20'}`}>
+    <div className="flex-none border-t border-line p-3 sm:px-4">
+      <div ref={box} className={`relative flex flex-col rounded-2xl border transition focus-within:ring-2 ${big ? 'h-[min(72vh,640px)]' : 'h-[clamp(232px,40vh,340px)]'} ${note ? 'border-[#f8d27c]/40 bg-[#f8d27c]/[0.06] focus-within:ring-[#f8d27c]/20' : 'border-line bg-[#0b0d16] focus-within:border-purple/70 focus-within:ring-purple/20'}`}>
         {/* Hàng trên: Email / Ghi chú + người nhận, tiêu đề */}
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3 pt-3">
+        <div className="flex flex-none flex-wrap items-center gap-x-3 gap-y-2 pl-3 pr-2 pt-2.5">
           <div role="tablist" aria-label={a('Kiểu trả lời')} className="inline-flex rounded-full bg-white/[0.06] p-0.5 text-[13px]">
             {[['email', 'mail', a('Email')], ['note', 'note', a('Ghi chú')]].map(([k, ic, l]) => (
               <button key={k} role="tab" type="button" aria-selected={mode === k} onClick={() => { setMode(k); ta.current?.focus() }}
@@ -328,10 +328,15 @@ export default function ReplyComposer({ thread, quoteMsg, cfg, library, fromName
               </span>
             </div>
           )}
+          <button type="button" onClick={() => { setBig(v => !v); ta.current?.focus() }} title={big ? a('Thu nhỏ khung soạn') : a('Mở rộng khung soạn')} aria-label={big ? a('Thu nhỏ khung soạn') : a('Mở rộng khung soạn')} aria-pressed={big}
+            className="ml-auto grid size-8 flex-none place-items-center rounded-lg text-muted transition hover:bg-white/10 hover:text-white">
+            <Icon d={big ? 'M4 14h6v6 M20 10h-6V4 M14 10l7-7 M3 21l7-7' : 'M14 4h6v6 M10 20H4v-6 M20 4l-7 7 M4 20l7-7'} /></button>
         </div>
 
+        {/* Phần giữa tự cuộn: thư dài không đẩy khung soạn cao lên che hội thoại */}
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
         {fmt && (
-          <div className="mx-3 mt-2 flex items-center gap-1 border-y border-line py-1">
+          <div className="mx-3 mt-2 flex flex-none items-center gap-1 border-y border-line py-1">
             {[['M7 5h6a3.5 3.5 0 0 1 0 7H7z M7 12h7a3.5 3.5 0 0 1 0 7H7z', a('Đậm (Ctrl + B)'), () => wrap('**')],
               ['M10 5h8 M6 19h8 M14 5l-4 14', a('Nghiêng (Ctrl + I)'), () => wrap('_')],
               ['M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1 M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1', a('Chèn link'), addLink],
@@ -341,9 +346,10 @@ export default function ReplyComposer({ thread, quoteMsg, cfg, library, fromName
             ))}
           </div>
         )}
-        <textarea ref={ta} rows={3} value={text} onChange={onChange} onKeyDown={onKey} aria-label={note ? a('Nội dung ghi chú') : a('Nội dung thư trả lời')}
+        <textarea ref={ta} value={text} onChange={onChange} onKeyDown={onKey} aria-label={note ? a('Nội dung ghi chú') : a('Nội dung thư trả lời')}
           placeholder={note ? a('Ghi chú cho riêng mình về hội thoại này…') : a('Viết trả lời cho {name}… (gõ / để chèn mẫu)', { name: thread.name })}
-          className="block max-h-72 min-h-[76px] w-full resize-none bg-transparent px-3 py-2.5 text-[15px] leading-relaxed text-[#e6e7f0] outline-none placeholder:text-[#7d81a0]" />
+          className="block min-h-[88px] w-full flex-1 resize-none overflow-y-auto bg-transparent px-3 py-2.5 text-[15px] leading-relaxed text-[#e6e7f0] outline-none placeholder:text-[#7d81a0]" />
+        <div className="flex-none">
 
         {/* Như Gmail: chữ ký hiện mờ cuối thư (× để bỏ), trích dẫn thu gọn thành "···" (bấm để xem / bỏ) */}
         {!note && sign && editSig && (
@@ -387,9 +393,11 @@ export default function ReplyComposer({ thread, quoteMsg, cfg, library, fromName
           </div>
         )}
         {files.length > 0 && <div className="flex flex-wrap gap-1.5 px-3 pb-1 pt-1">{files.map(f => <FileChip key={f.url} f={f} onRemove={f.uploading ? null : () => patch({ files: files.filter(x => x.url !== f.url) })} />)}</div>}
+        </div>
+        </div>
 
         {/* Hàng nút */}
-        <div className="flex flex-wrap items-center gap-1.5 px-2.5 pb-2.5 pt-1.5">
+        <div className="flex flex-none flex-wrap items-center gap-1.5 px-2.5 pb-2.5 pt-1.5">
           <input ref={fileIn} type="file" multiple hidden onChange={pickFiles} />
           <span className="relative">
             <RoundBtn icon="clip" label={a('Đính kèm file')} active={open === 'lib'} onClick={() => toggle('lib')} />
