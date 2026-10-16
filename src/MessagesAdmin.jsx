@@ -281,7 +281,9 @@ export default function MessagesAdmin({ toast, live, onChanged, openThread }) {
                 <button onClick={() => { setOpenKey(null); setRead([cur.lastIn.id], false) }} className={ghost} title={a('Đánh dấu chưa đọc và đóng hội thoại')}>{a('Đánh dấu chưa đọc')}</button>
               </div>
             </header>
-            <div className="min-h-[120px] flex-1 space-y-3.5 overflow-y-auto px-4 py-5 sm:px-7">
+            {/* Khung bọc tin nhắn + khung soạn: khung soạn phóng to sẽ phủ lên vùng này (absolute), không đẩy nút Gửi ra ngoài */}
+            <div className="relative flex min-h-0 flex-1 flex-col">
+            <div className="min-h-0 flex-1 space-y-3.5 overflow-y-auto px-4 py-5 sm:px-7">
               {cur.msgs.map((m, i) => {
                 const newDay = i === 0 || dayOf(m.created_at) !== dayOf(cur.msgs[i - 1].created_at)
                 return (
@@ -295,6 +297,7 @@ export default function MessagesAdmin({ toast, live, onChanged, openThread }) {
             </div>
             <ReplyComposer thread={cur} quoteMsg={isIn(cur.lastIn) ? cur.lastIn : null} cfg={replyCfg} library={library} fromName={me.from || 'Admin'} owner={me.from}
               toast={toast} onSaved={reload} onClose={() => setOpenKey(null)} onManage={() => setManage(true)} onLibraryAdd={f => setExtraFiles(l => [...l, f])} onCfgSaved={setReplyCfg} />
+            </div>
           </>)}
         </div>
       </div>
