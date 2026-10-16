@@ -80,7 +80,58 @@ const listeners = new Set()
 // Tài khoản demo (email, mật khẩu, hồ sơ) lưu trong trình duyệt để thử chức năng Tài khoản của tôi
 const ACCOUNT = 'cm-demo-account-v1'
 export const demoAccount = () => ({ email: DEMO_EMAIL, password: DEMO_PASSWORD, meta: {}, ...(store.get(ACCOUNT) || {}) })
-const userOf = acc => ({ id: 'demo-user', email: acc.email, user_metadata: { ...acc.meta } })
+const userOf = acc => ({ id: 'demo-user', email: acc.email, user_metadata: { ...acc.meta }, factors: (acc.factors || []).map(({ secret, ...f }) => f) })
+const saveAcc = acc => { store.set(ACCOUNT, acc); session = { ...session, user: userOf(acc) }; store.set(AUTH, session) }
+
+// Xác thực 2 bước (TOTP) giả lập: mã 6 số tính đúng chuẩn RFC 6238 nên dùng được app xác thực thật
+const B32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'
+const b32decode = s => { let bits = ''; for (const ch of s.replace(/=+$/, '')) bits += B32.indexOf(ch).toString(2).padStart(5, '0'); return Uint8Array.from(bits.match(/.{8}/g) || [], b => parseInt(b, 2)) }
+async function totpAt(secret, step) {
+  const key = await crypto.subtle.importKey('raw', b32decode(secret), { name: 'HMAC', hash: 'SHA-1' }, false, ['sign'])
+  const msg = new DataView(new ArrayBuffer(8)); msg.setUint32(4, step)
+  const h = new Uint8Array(await crypto.subtle.sign('HMAC', key, msg.buffer)), o = h[19] & 15
+  return String((((h[o] & 127) << 24) | (h[o + 1] << 16) | (h[o + 2] << 8) | h[o + 3]) % 1e6).padStart(6, '0')
+}
+/** Mã TOTP hiện tại của khóa bí mật (bản demo dùng để thử, không có trong bản thật) */
+export const demoTotp = secret => totpAt(secret, Math.floor(Date.now() / 30000))
+const mfaErr = message => ({ data: null, error: { message } })
+const mfa = {
+  async enroll({ friendlyName } = {}) {
+    if (!session) return mfaErr(at('Chưa đăng nhập.'))
+    const acc = demoAccount(), secret = Array.from(crypto.getRandomValues(new Uint8Array(32)), b => B32[b & 31]).join('')
+    const f = { id: `demo-${Date.now().toString(36)}`, factor_type: 'totp', friendly_name: friendlyName || '', status: 'unverified', created_at: new Date().toISOString(), secret }
+    acc.factors = [...(acc.factors || []), f]; saveAcc(acc)
+    const uri = `otpauth://totp/Demo:${encodeURIComponent(acc.email)}?secret=${secret}&issuer=Demo`
+    return { data: { id: f.id, type: 'totp', friendly_name: f.friendly_name, totp: { qr_code: '', secret, uri } }, error: null }
+  },
+  async challenge({ factorId }) { return { data: { id: `ch-${factorId}`, type: 'totp', expires_at: Date.now() / 1000 + 300 }, error: null } },
+  async verify({ factorId, code }) {
+    await new Promise(r => setTimeout(r, 250))
+    const acc = demoAccount(), f = (acc.factors || []).find(x => x.id === factorId)
+    if (!session || !f) return mfaErr(at('Không tìm thấy phương thức xác thực.'))
+    const now = Math.floor(Date.now() / 30000), ok = await Promise.all([now - 1, now, now + 1].map(t => totpAt(f.secret, t)))
+    if (!ok.includes(String(code).trim())) return mfaErr(at('Mã không đúng hoặc đã hết hạn.'))
+    f.status = 'verified'; session = { ...session, aal: 'aal2' }; saveAcc(acc); emit('MFA_CHALLENGE_VERIFIED')
+    return { data: { access_token: 'demo' }, error: null }
+  },
+  async challengeAndVerify({ factorId, code }) { return mfa.verify({ factorId, code }) },
+  async unenroll({ factorId }) {
+    const acc = demoAccount(), f = (acc.factors || []).find(x => x.id === factorId)
+    if (!session || !f) return mfaErr(at('Không tìm thấy phương thức xác thực.'))
+    if (f.status === 'verified' && session.aal !== 'aal2') return mfaErr(at('Cần nhập mã xác thực trước khi gỡ.'))
+    acc.factors = acc.factors.filter(x => x.id !== factorId); saveAcc(acc); emit('USER_UPDATED')
+    return { data: { id: factorId }, error: null }
+  },
+  async listFactors() {
+    const all = session?.user?.factors || []
+    return { data: { all, totp: all.filter(f => f.status === 'verified'), phone: [] }, error: null }
+  },
+  async getAuthenticatorAssuranceLevel() {
+    if (!session) return { data: { currentLevel: null, nextLevel: null, currentAuthenticationMethods: [] }, error: null }
+    const has = (session.user.factors || []).some(f => f.status === 'verified'), cur = session.aal || 'aal1'
+    return { data: { currentLevel: cur, nextLevel: has ? 'aal2' : cur, currentAuthenticationMethods: [] }, error: null }
+  },
+}
 let session = store.get(AUTH)
 const emit = evt => listeners.forEach(cb => cb(evt || (session ? 'SIGNED_IN' : 'SIGNED_OUT'), session))
 
@@ -130,7 +181,7 @@ export const demoClient = {
       const acc = demoAccount()
       if (email.trim().toLowerCase() !== acc.email || password !== acc.password)
         return { error: { message: at('Sai email hoặc mật khẩu. Tài khoản demo: {email} / {password}', { email: acc.email, password: acc.password }) } }
-      session = { user: userOf(acc) }; store.set(AUTH, session); emit()
+      session = { user: userOf(acc), aal: 'aal1' }; store.set(AUTH, session); emit()
       return { data: { session }, error: null }
     },
     // Bản demo: đổi email/mật khẩu/hồ sơ có hiệu lực ngay (bản thật đổi email cần bấm link xác nhận trong thư)
@@ -140,11 +191,12 @@ export const demoClient = {
       const acc = demoAccount()
       if (email) acc.email = email.trim().toLowerCase()
       if (password) acc.password = password
+      if (password && (acc.factors || []).some(f => f.status === 'verified') && session.aal !== 'aal2') return { data: { user: null }, error: { message: at('Cần nhập mã xác thực trước khi đổi mật khẩu.') } }
       if (data) acc.meta = { ...acc.meta, ...data }
-      store.set(ACCOUNT, acc)
-      session = { user: userOf(acc) }; store.set(AUTH, session); emit('USER_UPDATED')
+      saveAcc(acc); emit('USER_UPDATED')
       return { data: { user: session.user }, error: null }
     },
+    mfa,
     async signOut() { session = null; store.del(AUTH); emit(); return { error: null } },
   },
 }

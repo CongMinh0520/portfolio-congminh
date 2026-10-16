@@ -236,6 +236,11 @@ async function publish(db: any) {
   return { status: 200, data: { ok: true, published_at } }
 }
 
+// Mức xác thực trong token (aal1: mới nhập mật khẩu, aal2: đã nhập thêm mã 6 số). Token đã được getUser() kiểm tra chữ ký.
+function jwtAal(token: string) {
+  try { return JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).aal } catch { return '' }
+}
+
 Deno.serve(async req => {
   const cors = corsFor(req)
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
@@ -260,6 +265,10 @@ async function handle(req: Request): Promise<Response> {
     // Đăng nhập thôi chưa đủ: phải có trong bảng admins (supabase/migration-admin-lockdown.sql)
     const { data: adm } = await db.from('admins').select('user_id').eq('user_id', u.user.id).maybeSingle()
     if (!adm) return json(403, { code: 'forbidden', error: 'Tài khoản này không có quyền Admin.' })
+    // Đã bật xác thực 2 bước (Tài khoản của tôi): token phải ở mức aal2, tức đã nhập mã 6 số sau mật khẩu
+    if ((u.user.factors || []).some((f: any) => f.status === 'verified') && jwtAal(token) !== 'aal2') {
+      return json(403, { code: 'mfa', error: 'Cần nhập mã xác thực 2 bước.' })
+    }
     if (b.action === 'reply') { const r = await sendReply(db, b); return json(r.status, r.data) }
     if (b.action === 'draft') { const r = await draftReply(db, b); return json(r.status, r.data) }
     if (b.action === 'publish') { const r = await publish(db); return json(r.status, r.data) }

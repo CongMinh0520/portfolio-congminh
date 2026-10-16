@@ -10,4 +10,5 @@ import backup from './backup.js'
 import cv from './cv.js'
 import push from './push.js'
 import qa from './qa.js'
-export default { ...qa, ...push, ...cv, ...backup, ...version, ...stats, ...misc, ...settings, ...look, ...content, ...core }
+import mfa from './mfa.js'
+export default { ...mfa, ...qa, ...push, ...cv, ...backup, ...version, ...stats, ...misc, ...settings, ...look, ...content, ...core }

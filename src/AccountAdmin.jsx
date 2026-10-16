@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { supabase, demoMode } from './supabase.js'
 import { ImageField } from './HeroAdmin.jsx'
 import { autoAvatar } from './autoArt.js'
-import { ADMIN_LANGS, setAdminLang, useAdminLang, useA } from './adminLang.js'
+import { ADMIN_LANGS, setAdminLang, useAdminLang, useA, adminLocale } from './adminLang.js'
 
 const grad = 'bg-gradient-to-r from-pink to-purple'
 const input = 'w-full rounded-lg border border-line bg-[#0b0d16] px-3 py-2.5 text-sm outline-none transition focus:border-purple focus:ring-2 focus:ring-purple/25'
@@ -35,6 +35,99 @@ const Field = ({ id, label, children, err }) => (
 )
 function Password({ id, value, onChange, show, autoComplete }) {
   return <input id={id} type={show ? 'text' : 'password'} autoComplete={autoComplete} className={input} value={value} onChange={e => onChange(e.target.value)} />
+}
+
+/** Xác thực 2 bước (TOTP): thêm app xác thực bằng mã QR, xem và gỡ thiết bị đã thêm */
+function MfaCard({ toast, onChange }) {
+  const a = useA()
+  const [factors, setFactors] = useState(null); const [enroll, setEnroll] = useState(null)
+  const [name, setName] = useState(''); const [code, setCode] = useState(''); const [err, setErr] = useState(''); const [busy, setBusy] = useState(false)
+  const load = async () => {
+    const { data, error } = await supabase.auth.mfa.listFactors()
+    if (error) { setErr(error.message); return [] }
+    const list = (data?.all || []).filter(f => f.factor_type === 'totp')
+    setFactors(list.filter(f => f.status === 'verified')); onChange?.(list.some(f => f.status === 'verified'))
+    return list
+  }
+  useEffect(() => { load() }, [])
+  const start = async () => {
+    setBusy(true); setErr('')
+    // Dọn các lần thêm bỏ dở (chưa nhập mã) để Supabase không báo trùng tên
+    const list = await load()
+    for (const f of list.filter(f => f.status !== 'verified')) await supabase.auth.mfa.unenroll({ factorId: f.id })
+    const label = name.trim() || a('App xác thực {n}', { n: list.filter(f => f.status === 'verified').length + 1 })
+    const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp', friendlyName: label, issuer: location.hostname })
+    setBusy(false); if (error) return setErr(error.message)
+    setEnroll(data); setCode('')
+  }
+  const cancel = async () => { if (enroll) await supabase.auth.mfa.unenroll({ factorId: enroll.id }); setEnroll(null); setErr(''); setName('') }
+  const verify = async e => {
+    e.preventDefault()
+    const v = code.replace(/\s/g, '')
+    if (!/^\d{6}$/.test(v)) return setErr(a('Nhập đủ 6 chữ số.'))
+    setBusy(true); setErr('')
+    const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId: enroll.id, code: v })
+    setBusy(false); if (error) return setErr(a('Mã không đúng hoặc đã hết hạn.'))
+    setEnroll(null); setName(''); await load(); toast(a('Đã bật xác thực 2 bước'))
+  }
+  const remove = async f => {
+    const last = factors.length === 1
+    if (!window.confirm(last ? a('Gỡ {name}? Đây là thiết bị cuối cùng, đăng nhập sẽ chỉ còn cần mật khẩu.', { name: f.friendly_name }) : a('Gỡ {name}?', { name: f.friendly_name }))) return
+    const { error } = await supabase.auth.mfa.unenroll({ factorId: f.id })
+    if (error) return toast(error.message, 'error')
+    await load(); toast(last ? a('Đã tắt xác thực 2 bước') : a('Đã gỡ thiết bị'))
+  }
+  const on = factors?.length > 0
+  return (
+    <Card title={a('Xác thực 2 bước')} hint={a('Ngoài mật khẩu, mỗi lần đăng nhập cần thêm mã 6 số trong app xác thực trên điện thoại (Google Authenticator, Authy, 1Password…).')}>
+      {factors === null ? <p className="text-sm text-muted">{a('Đang tải…')}</p> : (
+        <p className={`rounded-lg border px-3 py-2 text-sm ${on ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300' : 'border-[#f8d27c]/40 bg-[#f8d27c]/10 text-[#f8d27c]'}`}>
+          {on ? a('Đang bật. Đăng nhập cần mật khẩu và mã xác thực.') : a('Đang tắt. Ai biết mật khẩu là vào được Admin, nên bật.')}
+        </p>
+      )}
+      {on && (
+        <ul className="divide-y divide-line rounded-lg border border-line">
+          {factors.map(f => (
+            <li key={f.id} className="flex items-center justify-between gap-3 px-3 py-2.5 text-sm">
+              <span className="min-w-0"><b className="block truncate">{f.friendly_name || f.id.slice(0, 8)}</b><span className="text-xs text-muted">{a('Thêm ngày {d}', { d: new Date(f.created_at).toLocaleDateString(adminLocale()) })}</span></span>
+              <button type="button" onClick={() => remove(f)} className={`${ghost} hover:border-red-500/50 hover:text-red-300`}>{a('Gỡ')}</button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {enroll ? (
+        <form onSubmit={verify} noValidate className="space-y-4 rounded-lg border border-line p-4">
+          <p className="text-sm">{a('1. Mở app xác thực, chọn thêm tài khoản rồi quét mã QR (hoặc nhập khóa bên dưới).')}</p>
+          <div className="flex flex-wrap items-start gap-4">
+            {enroll.totp.qr_code && <img src={enroll.totp.qr_code} alt={a('Mã QR xác thực 2 bước')} className="size-44 rounded-lg bg-white p-2" />}
+            <div className="min-w-0 flex-1 space-y-1.5">
+              <p className="text-xs text-muted">{a('Khóa bí mật (nhập tay nếu không quét được):')}</p>
+              <code className="block break-all rounded-lg border border-line bg-[#0b0d16] px-3 py-2 font-mono text-sm">{enroll.totp.secret}</code>
+              {demoMode && <p className="text-xs text-muted">{a('Bản demo không có mã QR; nhập khóa này vào app xác thực.')}</p>}
+            </div>
+          </div>
+          <Field id="mfa-new-code" label={a('2. Nhập mã 6 số app đang hiện')} err={err}>
+            <input id="mfa-new-code" className={`${input} max-w-[200px] text-center font-mono tracking-[0.3em]`} inputMode="numeric" autoComplete="one-time-code" maxLength={7}
+              value={code} onChange={e => { setCode(e.target.value); setErr('') }} placeholder="000000" />
+          </Field>
+          <div className="flex justify-end gap-2">
+            <button type="button" onClick={cancel} className={ghost}>{a('Hủy')}</button>
+            <button disabled={busy || !code.trim()} className={`${btn} ${grad}`}>{busy ? a('Đang kiểm tra…') : a('Xác nhận và bật')}</button>
+          </div>
+        </form>
+      ) : factors !== null && (
+        <div className="space-y-3">
+          {err && <p className="text-xs text-red-300">{err}</p>}
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="min-w-[200px] flex-1"><Field id="mfa-name" label={a('Tên thiết bị (để nhận ra khi gỡ)')}>
+              <input id="mfa-name" className={input} value={name} maxLength={40} placeholder={a('VD: iPhone của Minh')} onChange={e => setName(e.target.value)} />
+            </Field></div>
+            <button type="button" disabled={busy} onClick={start} className={on ? ghost : `${btn} ${grad}`}>{busy ? a('Đang tạo…') : on ? a('Thêm thiết bị khác') : a('Bật xác thực 2 bước')}</button>
+          </div>
+        </div>
+      )}
+    </Card>
+  )
 }
 
 export default function AccountAdmin({ session, toast }) {
@@ -78,21 +171,30 @@ export default function AccountAdmin({ session, toast }) {
   }
 
   /* ---- Mật khẩu ---- */
+  // Đã bật xác thực 2 bước: hỏi mã 6 số thay cho mật khẩu cũ (đăng nhập lại để kiểm tra sẽ hạ phiên về aal1)
+  const [mfaOn, setMfaOn] = useState(false)
   const [pw, setPw] = useState({ cur: '', next: '', again: '' }); const [show, setShow] = useState(false)
   const [errW, setErrW] = useState({}); const [busyW, setBusyW] = useState(false)
   const setP = k => v => { setPw(p => ({ ...p, [k]: v })); setErrW(x => ({ ...x, [k]: '' })) }
   const savePassword = async e => {
     e.preventDefault()
     const v = {}
-    if (!pw.cur) v.cur = a('Nhập mật khẩu đang dùng.')
+    if (mfaOn ? !/^\d{6}$/.test(pw.cur.replace(/\s/g, '')) : !pw.cur) v.cur = mfaOn ? a('Nhập đủ 6 chữ số.') : a('Nhập mật khẩu đang dùng.')
     if (pw.next.length < 8) v.next = a('Mật khẩu mới cần ít nhất 8 ký tự.')
-    else if (pw.next === pw.cur) v.next = a('Mật khẩu mới phải khác mật khẩu cũ.')
+    else if (!mfaOn && pw.next === pw.cur) v.next = a('Mật khẩu mới phải khác mật khẩu cũ.')
     if (pw.again !== pw.next) v.again = a('Hai ô mật khẩu mới chưa giống nhau.')
     setErrW(v); if (Object.keys(v).length) return
     setBusyW(true)
     // Kiểm tra lại mật khẩu cũ trước khi đổi, phòng khi ai đó dùng máy đang đăng nhập sẵn
-    const check = await supabase.auth.signInWithPassword({ email: user.email, password: pw.cur })
-    if (check.error) { setBusyW(false); return setErrW({ cur: a('Mật khẩu đang dùng không đúng.') }) }
+    if (mfaOn) {
+      const { data: f } = await supabase.auth.mfa.listFactors()
+      const fid = f?.totp?.[0]?.id
+      const check = fid ? await supabase.auth.mfa.challengeAndVerify({ factorId: fid, code: pw.cur.replace(/\s/g, '') }) : { error: true }
+      if (check.error) { setBusyW(false); return setErrW({ cur: a('Mã không đúng hoặc đã hết hạn.') }) }
+    } else {
+      const check = await supabase.auth.signInWithPassword({ email: user.email, password: pw.cur })
+      if (check.error) { setBusyW(false); return setErrW({ cur: a('Mật khẩu đang dùng không đúng.') }) }
+    }
     const { error } = await supabase.auth.updateUser({ password: pw.next })
     setBusyW(false); if (error) return setErrW({ next: error.message })
     setPw({ cur: '', next: '', again: '' }); setShow(false); toast(a('Đã đổi mật khẩu'))
@@ -135,7 +237,9 @@ export default function AccountAdmin({ session, toast }) {
       <Card title={a('Mật khẩu')} hint={a('Ít nhất 8 ký tự. Nên dùng cụm từ dài, khác mật khẩu ở nơi khác.')}>
         <form onSubmit={savePassword} className="space-y-4">
           <input type="email" autoComplete="username" value={user.email} readOnly hidden />
-          <Field id="acc-pw-cur" label={a('Mật khẩu đang dùng')} err={errW.cur}><Password id="acc-pw-cur" value={pw.cur} onChange={setP('cur')} show={show} autoComplete="current-password" /></Field>
+          {mfaOn
+            ? <Field id="acc-pw-cur" label={a('Mã xác thực 6 số (thay cho mật khẩu cũ)')} err={errW.cur}><input id="acc-pw-cur" className={`${input} max-w-[200px] font-mono tracking-[0.3em]`} inputMode="numeric" autoComplete="one-time-code" maxLength={7} value={pw.cur} onChange={e => setP('cur')(e.target.value)} /></Field>
+            : <Field id="acc-pw-cur" label={a('Mật khẩu đang dùng')} err={errW.cur}><Password id="acc-pw-cur" value={pw.cur} onChange={setP('cur')} show={show} autoComplete="current-password" /></Field>}
           <div className="grid gap-4 sm:grid-cols-2">
             <Field id="acc-pw-new" label={a('Mật khẩu mới')} err={errW.next}><Password id="acc-pw-new" value={pw.next} onChange={setP('next')} show={show} autoComplete="new-password" /></Field>
             <Field id="acc-pw-again" label={a('Nhập lại mật khẩu mới')} err={errW.again}><Password id="acc-pw-again" value={pw.again} onChange={setP('again')} show={show} autoComplete="new-password" /></Field>
@@ -146,6 +250,8 @@ export default function AccountAdmin({ session, toast }) {
           </div>
         </form>
       </Card>
+
+      <MfaCard toast={toast} onChange={setMfaOn} />
 
       <Card title={a('Đăng xuất')} hint={a('Thoát khỏi Admin trên trình duyệt này.')}>
         <button onClick={() => supabase.auth.signOut()} className={`${ghost} hover:border-red-500/50 hover:text-red-300`}>{a('Đăng xuất')}</button>

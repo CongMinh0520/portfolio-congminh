@@ -264,6 +264,50 @@ function Login({ brand }) {
   )
 }
 
+/* ---------------- Xác thực 2 bước sau khi đăng nhập ---------------- */
+// Tài khoản đã bật xác thực 2 bước mà phiên mới ở mức aal1 (mới nhập mật khẩu): hỏi mã 6 số trong app xác thực
+function MfaGate({ brand }) {
+  const a = useA()
+  const [factors, setFactors] = useState(null); const [fid, setFid] = useState('')
+  const [code, setCode] = useState(''); const [err, setErr] = useState(''); const [busy, setBusy] = useState(false)
+  useEffect(() => {
+    supabase.auth.mfa.listFactors().then(({ data, error }) => {
+      if (error) return setErr(error.message)
+      const list = data?.totp || []; setFactors(list); setFid(list[0]?.id || '')
+    })
+  }, [])
+  const submit = async e => {
+    e.preventDefault()
+    const v = code.replace(/\s/g, '')
+    if (!/^\d{6}$/.test(v)) { setErr(a('Nhập đủ 6 chữ số.')); return }
+    setBusy(true); setErr('')
+    const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId: fid, code: v })
+    setBusy(false); if (error) { setErr(a('Mã không đúng hoặc đã hết hạn.')); setCode('') }
+  }
+  return (
+    <div className="grid min-h-screen place-items-center px-4">
+      <form onSubmit={submit} noValidate className="w-full max-w-[400px] space-y-4 rounded-2xl border border-line bg-card p-7 shadow-[0_30px_80px_#00000080]">
+        <div className="mb-2 flex items-center gap-3">
+          <BrandIcon brand={brand} className="size-10 rounded-xl text-sm" />
+          <div><h1 className="text-lg font-bold leading-tight">{a('Xác thực 2 bước')}</h1><p className="text-xs text-muted">{a('Mở app xác thực (Google Authenticator, Authy…) và nhập mã 6 số.')}</p></div>
+        </div>
+        {factors?.length > 1 && (
+          <label htmlFor="mfa-factor" className="block"><span className="mb-1.5 block text-xs font-medium text-muted">{a('Chọn thiết bị')}</span>
+            <select id="mfa-factor" className={input} value={fid} onChange={e => setFid(e.target.value)}>
+              {factors.map(f => <option key={f.id} value={f.id}>{f.friendly_name || f.id.slice(0, 8)}</option>)}
+            </select></label>
+        )}
+        <label htmlFor="mfa-code" className="block"><span className="mb-1.5 block text-xs font-medium text-muted">{a('Mã xác thực')}</span>
+          <input id="mfa-code" className={`${input} text-center font-mono text-lg tracking-[0.4em]`} inputMode="numeric" autoComplete="one-time-code" maxLength={7} autoFocus
+            value={code} onChange={e => { setCode(e.target.value); setErr('') }} placeholder="000000" /></label>
+        {err && <p role="alert" className="text-sm text-red-400">{err}</p>}
+        <button disabled={busy || !fid} className={`${btn} ${grad} w-full py-2.5`}>{busy ? a('Đang kiểm tra…') : a('Xác nhận')}</button>
+        <button type="button" onClick={() => supabase.auth.signOut()} className="block w-full text-center text-xs text-muted hover:text-white">{a('Đăng xuất, dùng tài khoản khác')}</button>
+      </form>
+    </div>
+  )
+}
+
 /* ---------------- Tổng quan ---------------- */
 function Dashboard({ go, counts }) {
   const a = useA()
@@ -771,6 +815,8 @@ function CursorPage({ toast }) {
 /* ---------------- Khung chính ---------------- */
 export default function Admin() {
   const [session, setSession] = useState(undefined)
+  // Phiên đã nhập mật khẩu nhưng còn thiếu mã xác thực 2 bước (chưa vào Admin)
+  const [needMfa, setNeedMfa] = useState(false)
   // Ngôn ngữ giao diện Admin: theo lựa chọn đã lưu trong tài khoản (Tài khoản của tôi → Ngôn ngữ trang Admin)
   const adminLang = useAdminLang()
   // Admin để English: chờ tải bảng English (rất nhanh) để không chớp chữ tiếng Việt
@@ -809,9 +855,21 @@ export default function Admin() {
   }, [])
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session))
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s))
-    return () => sub.subscription.unsubscribe()
+    // Chỉ coi là đã vào Admin khi phiên đủ mức xác thực: tài khoản có xác thực 2 bước thì phải ở aal2
+    let seq = 0
+    const apply = async s => {
+      const n = ++seq
+      let need = false
+      if (s) {
+        const { data } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel().catch(() => ({ data: null }))
+        need = data?.nextLevel === 'aal2' && data.currentLevel !== 'aal2'
+      }
+      if (n !== seq) return
+      setNeedMfa(need); setSession(need ? null : s)
+    }
+    supabase.auth.getSession().then(({ data }) => apply(data.session))
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => { setTimeout(() => apply(s)) })
+    return () => { seq++; sub.subscription.unsubscribe() }
   }, [])
   const countOf = (t, r) => setCounts(c => ({
     ...c, [t]: { total: r.length, hidden: r.filter(x => x.visible === false).length, ...(t === 'posts' ? { waiting: r.filter(x => postStatus(x) === 'review').length } : {}) },
@@ -913,10 +971,11 @@ export default function Admin() {
   }, [searchOpen, found, adminLang])
   // Số trên tab trình duyệt: tin chưa đọc + bài chờ duyệt (tùy cài đặt Thông báo)
   const tabN = (notify.events.message.tab ? counts.messages?.waiting || 0 : 0) + (notify.events.post.tab ? counts.posts?.waiting || 0 : 0)
-  useEffect(() => { setTabCount(session ? tabN : 0, session ? `${at(TITLES[page]) || 'Admin'} — Admin` : `${at('Đăng nhập')} — Admin`) }, [tabN, page, session, adminLang])
+  useEffect(() => { setTabCount(session ? tabN : 0, session ? `${at(TITLES[page]) || 'Admin'} — Admin` : `${at(needMfa ? 'Xác thực 2 bước' : 'Đăng nhập')} — Admin`) }, [tabN, page, session, needMfa, adminLang])
   const toggleCollapse = () => { const v = !collapsed; setCollapsed(v); storage.set('cm-admin-collapsed', v ? '1' : '0') }
 
   if (session === undefined || !adminDictReady()) return <p className="mt-24 text-center text-muted">{a('Đang tải…')}</p>
+  if (needMfa) return <MfaGate brand={brand} />
   if (!session) return <Login brand={brand} />
 
   const mini = collapsed && !drawer
