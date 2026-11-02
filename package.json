@@ -19,7 +19,7 @@
     "@tiptap/pm": "^3.31.4",
     "@tiptap/react": "^3.31.4",
     "@tiptap/starter-kit": "^3.31.4",
-    "@vercel/og": "^0.8.5",
+    "@vercel/og": "^1.0.3",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   },
